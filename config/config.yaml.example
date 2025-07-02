@@ -1,0 +1,7 @@
+version: 1.0
+database:
+  host: "<DB IP Address>"
+  port: <DB port>
+  user: "<DB user>"
+  password: "<DB password>"
+  dbname: "<DB name>"

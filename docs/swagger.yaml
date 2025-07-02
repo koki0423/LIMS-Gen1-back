@@ -1,0 +1,546 @@
+basePath: /api/v1
+definitions:
+  domain.Asset:
+    properties:
+      id:
+        type: integer
+      item_master_id:
+        type: integer
+      last_check_date:
+        type: string
+      last_checker:
+        type: string
+      location:
+        type: string
+      notes:
+        type: string
+      owner:
+        type: string
+      purchase_date:
+        type: string
+      quantity:
+        type: integer
+      serial_number:
+        description: omitemptyは、値が空ならJSONに含めないというGoのタグ
+        type: string
+      status_id:
+        type: integer
+    type: object
+  domain.AssetReturnRequest:
+    properties:
+      lend_id:
+        type: integer
+      notes:
+        type: string
+      quantity:
+        type: integer
+      return_date:
+        type: string
+    required:
+    - lend_id
+    - quantity
+    - return_date
+    type: object
+  domain.AssetsLend:
+    properties:
+      actual_return_date:
+        description: 実際の返却日 ("YYYY-MM-DD" or null)
+        type: string
+      asset_id:
+        description: 貸出対象資産ID
+        type: integer
+      borrower:
+        description: 借用者
+        type: string
+      expected_return_date:
+        description: 返却予定日 ("YYYY-MM-DD" or null)
+        type: string
+      id:
+        description: 主キー
+        type: integer
+      lend_date:
+        description: 貸出日 ("YYYY-MM-DD")
+        type: string
+      notes:
+        description: 備考 (null可)
+        type: string
+      quantity:
+        description: 貸出数
+        type: integer
+    type: object
+  domain.CreateAssetRequest:
+    properties:
+      asset:
+        description: assets テーブル相当（個別資産）
+        properties:
+          item_master_id:
+            description: マスタ登録後に判明するのでフロントからはNULL許容
+            type: integer
+          last_check_date:
+            description: '"2024-01-01"'
+            type: string
+          last_checker:
+            type: string
+          location:
+            type: string
+          notes:
+            type: string
+          owner:
+            type: string
+          purchase_date:
+            description: '"2024-01-01" 形式'
+            type: string
+          quantity:
+            type: integer
+          serial_number:
+            type: string
+          status_id:
+            type: integer
+        required:
+        - quantity
+        - status_id
+        type: object
+      asset_master:
+        description: assets_masters テーブル相当（同時登録の場合）
+        properties:
+          genre_id:
+            description: NULL許容
+            type: integer
+          management_category_id:
+            type: integer
+          manufacturer:
+            description: NULL許容
+            type: string
+          model_number:
+            description: NULL許容
+            type: string
+          name:
+            type: string
+        required:
+        - management_category_id
+        - name
+        type: object
+    required:
+    - asset
+    - asset_master
+    type: object
+  domain.EditAssetRequest:
+    properties:
+      asset_id:
+        description: 主キー
+        type: integer
+      last_check_date:
+        description: '"2024-01-01"'
+        type: string
+      last_checker:
+        type: string
+      location:
+        type: string
+      notes:
+        type: string
+      owner:
+        type: string
+      purchase_date:
+        description: '"2024-01-01" 形式'
+        type: string
+      quantity:
+        type: integer
+      serial_number:
+        type: string
+      status_id:
+        type: integer
+    required:
+    - quantity
+    - status_id
+    type: object
+  domain.LendAssetRequest:
+    properties:
+      actual_return_date:
+        description: NULL 可（通常登録時はNULL）
+        type: string
+      asset_id:
+        type: integer
+      borrower:
+        type: string
+      expected_return_date:
+        description: NULL 可
+        type: string
+      lend_date:
+        description: '"YYYY-MM-DD" 形式'
+        type: string
+      notes:
+        description: NULL 可
+        type: string
+      quantity:
+        type: integer
+    required:
+    - asset_id
+    - borrower
+    - lend_date
+    - quantity
+    type: object
+  domain.StudentCardInfo:
+    properties:
+      student_number:
+        type: string
+    type: object
+  handler.AssetListResponse:
+    properties:
+      assets:
+        items:
+          $ref: '#/definitions/domain.Asset'
+        type: array
+      message:
+        example: Assets list retrieved successfully
+        type: string
+    type: object
+  handler.AssetResponse:
+    properties:
+      asset:
+        $ref: '#/definitions/domain.Asset'
+      message:
+        example: Equipment retrieved successfully
+        type: string
+    type: object
+  handler.ErrorResponse:
+    properties:
+      error:
+        example: エラーメッセージ
+        type: string
+    type: object
+  handler.GetNFCResponse:
+    properties:
+      data:
+        $ref: '#/definitions/domain.StudentCardInfo'
+      message:
+        example: NFC data retrieved successfully
+        type: string
+    type: object
+  handler.IDResponse:
+    properties:
+      asset_id:
+        example: 123
+        type: integer
+      message:
+        example: Asset created successfully
+        type: string
+    type: object
+  handler.LendListResponse:
+    properties:
+      lends:
+        items:
+          $ref: '#/definitions/domain.AssetsLend'
+        type: array
+      message:
+        example: Lends retrieved successfully
+        type: string
+    type: object
+  handler.PingErrorResponse:
+    properties:
+      error:
+        example: Internal Server Error
+        type: string
+    type: object
+  handler.PingResponse:
+    properties:
+      message:
+        example: pong
+        type: string
+    type: object
+  handler.SuccessResponse:
+    properties:
+      message:
+        example: 処理が正常に完了しました
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 研究室内の備品を管理するシステムです。
+  title: 備品管理システム
+  version: "1.0"
+paths:
+  /assets:
+    post:
+      consumes:
+      - application/json
+      description: 新しい備品情報を登録します。
+      parameters:
+      - description: 登録する備品情報
+        in: body
+        name: asset
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateAssetRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handler.IDResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: 新規備品を登録
+      tags:
+      - Assets
+  /assets/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 指定されたIDを持つ単一の備品情報を取得します。
+      parameters:
+      - description: 備品ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AssetResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: 備品情報をIDで取得
+      tags:
+      - Assets
+    put:
+      consumes:
+      - application/json
+      description: 指定されたIDの備品情報を更新します。
+      parameters:
+      - description: 備品ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 更新する備品情報
+        in: body
+        name: asset
+        required: true
+        schema:
+          $ref: '#/definitions/domain.EditAssetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: 備品情報を更新
+      tags:
+      - Assets
+  /assets/{id}/lend:
+    post:
+      consumes:
+      - application/json
+      description: 指定されたIDの備品を貸し出します。
+      parameters:
+      - description: 備品ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 貸出情報（貸出先ユーザーなど）
+        in: body
+        name: lend
+        required: true
+        schema:
+          $ref: '#/definitions/domain.LendAssetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: 備品を貸出
+      tags:
+      - Lends
+  /assets/master:
+    get:
+      consumes:
+      - application/json
+      description: 登録されているすべての備品マスタ情報を取得します。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AssetListResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: 備品マスタ（すべて）を取得
+      tags:
+      - Assets
+  /assets/master/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 指定されたIDを持つ単一の備品マスタ情報を取得します。
+      parameters:
+      - description: 備品マスタID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AssetResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: 備品マスタをIDで取得
+      tags:
+      - Assets
+  /assetsAll:
+    get:
+      consumes:
+      - application/json
+      description: 登録されているすべての備品情報を取得します。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AssetListResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: 備品情報（すべて）を取得
+      tags:
+      - Assets
+  /lends:
+    get:
+      consumes:
+      - application/json
+      description: すべての貸出情報を取得します。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.LendListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: 貸出情報（すべて）を取得
+      tags:
+      - Lends
+  /lends/{id}/return:
+    post:
+      consumes:
+      - application/json
+      description: 指定されたIDの貸出情報を「返却済み」にします。
+      parameters:
+      - description: 貸出ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 返却情報（返却日など）
+        in: body
+        name: return
+        required: true
+        schema:
+          $ref: '#/definitions/domain.AssetReturnRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: 備品を返却
+      tags:
+      - Lends
+  /nfc/read:
+    get:
+      description: NFCリーダからカード情報を取得します。ダミーモード時はサンプル値を返します。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.GetNFCResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: NFCカード情報の取得
+      tags:
+      - nfc
+  /ping:
+    get:
+      description: Ping応答を確認するためのハンドラーです。そもそもswaggerが動いていればpongは絶対返ってくるはず。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.PingResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.PingErrorResponse'
+      summary: Ping応答を確認
+      tags:
+      - system
+swagger: "2.0"
