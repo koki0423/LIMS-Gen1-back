@@ -68,3 +68,67 @@ type EditAssetRequest struct {
 	LastChecker   *string `json:"last_checker"`
 	Notes         *string `json:"notes"`
 }
+
+/*将来的にこっちへ移行*/
+// // CreateAssetRequest は資産の新規登録リクエストの構造体 POST /assets
+// type CreateAssetRequest struct {
+// 	// 既存の備品マスタID (これを指定した場合、以下のマスタ情報は無視される)
+// 	AssetMasterID *int `json:"asset_master_id"`
+	
+// 	// --- 新規マスタ登録用の情報 ---
+// 	Name                 *string `json:"name"`
+// 	ManagementCategoryID *int    `json:"management_category_id"`
+// 	GenreID              *int    `json:"genre_id"`
+// 	Manufacturer         *string `json:"manufacturer"`
+// 	ModelNumber          *string `json:"model_number"`
+	
+// 	// --- 個別資産の情報 ---
+// 	SerialNumber string `json:"serial_number"`
+// 	StatusID     int    `json:"status_id"`
+// 	PurchaseDate string `json:"purchase_date"` // YYYY-MM-DD
+// 	Owner        string `json:"owner"`
+// 	Location     string `json:"location"`
+// 	Notes        string `json:"notes"`
+// }
+
+// // UpdateAssetRequest は資産情報更新リクエストの構造体 PUT /assets/edit/:id
+// type UpdateAssetRequest struct {
+// 	StatusID *int    `json:"status_id"`
+// 	Owner    *string `json:"owner"`
+// 	Location *string `json:"location"`
+// 	Notes    *string `json:"notes"`
+// }
+
+// // CheckAssetRequest は資産点検リクエストの構造体 POST /assets/check/:id
+// type CheckAssetRequest struct {
+// 	LastChecker string `json:"last_checker"` // 点検者の学籍番号
+// 	StatusID    int    `json:"status_id"`    // 点検後の状態
+// 	Notes       string `json:"notes"`        // 点検に関する備考
+// }
+
+// // CreateLendRequest は貸出登録リクエストの構造体 POST /lend/:id
+// type CreateLendRequest struct {
+// 	Borrower           string `json:"borrower"` // 借主の学籍番号
+// 	ExpectedReturnDate string `json:"expected_return_date"` // YYYY-MM-DD
+// 	Notes              string `json:"notes"`
+// 	Quantity           int    `json:"quantity"` // 通常は1
+// }
+
+// // UpdateLendRequest は貸出情報更新リクエストの構造体 PUT /lend/edit/:id
+// type UpdateLendRequest struct {
+// 	ExpectedReturnDate *string `json:"expected_return_date"`
+// 	Notes              *string `json:"notes"`
+// }
+
+// // CreateReturnRequest は返却登録リクエストの構造体POST /lend/return/:id
+// type CreateReturnRequest struct {
+// 	Notes            string `json:"notes"`
+// 	ReturnedQuantity int    `json:"returned_quantity"` // 通常は1
+// }
+
+// // CreateDisposalRequest は廃棄登録リクエストの構造体POST /disposal/:id
+// type CreateDisposalRequest struct {
+// 	Reason      string `json:"reason"`
+// 	ProcessedBy string `json:"processed_by"` // 処理者の学籍番号
+// 	Quantity    int    `json:"quantity"`     // 通常は1
+// }
