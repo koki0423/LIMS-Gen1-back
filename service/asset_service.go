@@ -140,6 +140,7 @@ func (e *AssetService) CreateAssetWithMaster(newAsset domain.CreateAssetRequest)
 	}
 }
 
+
 func (e *AssetService) GetAssetAll() ([]domain.Asset, error) {
 	dbAssets, err := assets.FetchAssetsAll(e.DB)
 	if err != nil {
