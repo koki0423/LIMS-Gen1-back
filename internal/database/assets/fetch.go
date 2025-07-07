@@ -7,6 +7,7 @@ import (
 	"log"
 )
 
+// GET /assets/all
 func FetchAssetsAll(db *sql.DB) ([]model.Asset, error) {
 	tx, err := db.Begin()
 	if err != nil {
@@ -49,6 +50,42 @@ func FetchAssetsAll(db *sql.DB) ([]model.Asset, error) {
 	return assets, nil
 }
 
+// GET /assets/:id
+func FetchAssetsByID(db *sql.DB, assetID int64) (*model.Asset, error) {
+	if assetID <= 0 {
+		log.Println("資産情報取得：無効な資産ID")
+		return nil, nil
+	}
+
+	query := `SELECT * FROM assets WHERE id = ?`
+	row := db.QueryRow(query, assetID)
+
+	var asset model.Asset
+	err := row.Scan(
+		&asset.ID,
+		&asset.ItemMasterID,
+		&asset.Quantity,
+		&asset.SerialNumber,
+		&asset.StatusID,
+		&asset.PurchaseDate,
+		&asset.Owner,
+		&asset.Location,
+		&asset.LastCheckDate,
+		&asset.LastChecker,
+		&asset.Notes,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Println("資産情報取得：該当資産が存在しません")
+			return nil, nil
+		}
+		log.Println("資産情報取得：スキャンエラー:", err)
+		return nil, err
+	}
+	return &asset, nil
+}
+
+// GET /assets/master/all
 func FetchAllAssetsMaster(db *sql.DB) ([]model.AssetsMaster, error) {
 	tx, err := db.Begin()
 	if err != nil {
@@ -85,6 +122,7 @@ func FetchAllAssetsMaster(db *sql.DB) ([]model.AssetsMaster, error) {
 	return assetMasters, nil
 }
 
+// GET /assets/master/:id
 func FetchAssetsMasterByID(db *sql.DB, assetMasterID int64) (*model.AssetsMaster, error) {
 	if assetMasterID <= 0 {
 		log.Println("資産マスター情報取得：無効な資産マスターID")
@@ -104,7 +142,6 @@ func FetchAssetsMasterByID(db *sql.DB, assetMasterID int64) (*model.AssetsMaster
 		&assetMaster.ModelNumber,
 	)
 
-	// log.Printf("資産マスター情報取得：ID=%d, Name=%s, Manufacrure=%s, modelNumber=%s",assetMaster.ID, assetMaster.Name, assetMaster.Manufacturer, assetMaster.ModelNumber)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Println("資産マスター情報取得：該当資産マスターが存在しません")
@@ -114,38 +151,4 @@ func FetchAssetsMasterByID(db *sql.DB, assetMasterID int64) (*model.AssetsMaster
 		return nil, err
 	}
 	return &assetMaster, nil
-}
-
-func FetchAssetsByID(db *sql.DB, assetID int64) (*model.Asset, error) {
-	if assetID <= 0 {
-		log.Println("資産情報取得：無効な資産ID")
-		return nil, nil
-	}
-
-	query := `SELECT * FROM assets WHERE id = ?`
-	row := db.QueryRow(query, assetID)
-
-	var asset model.Asset
-	err := row.Scan(
-		&asset.ID,
-		&asset.ItemMasterID,
-		&asset.Quantity,
-		&asset.SerialNumber,
-		&asset.StatusID,
-		&asset.PurchaseDate,
-		&asset.Owner,
-		&asset.Location,
-		&asset.LastCheckDate,
-		&asset.LastChecker,
-		&asset.Notes,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			log.Println("資産情報取得：該当資産が存在しません")
-			return nil, nil
-		}
-		log.Println("資産情報取得：スキャンエラー:", err)
-		return nil, err
-	}
-	return &asset, nil
 }

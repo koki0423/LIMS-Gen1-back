@@ -4,14 +4,9 @@ import (
 	"database/sql"
 	"equipmentManager/domain"
 	"equipmentManager/internal/database/assets"
-	"equipmentManager/internal/database/lends"
 	model "equipmentManager/internal/database/model/tables"
-	"equipmentManager/internal/database/returns"
 	"equipmentManager/utils"
 	"fmt"
-	// "log"
-
-	"time"
 )
 
 type AssetService struct {
@@ -23,19 +18,19 @@ func NewAssetService(db *sql.DB) *AssetService {
 }
 
 // --- ドメイン変換共通関数群 ---
-func toDomainAsset(m model.Asset) domain.Asset {
+func ModelToDomainAsset(model model.Asset) domain.Asset {
 	return domain.Asset{
-		ID:            m.ID,
-		ItemMasterID:  m.ItemMasterID,
-		Quantity:      m.Quantity,
-		SerialNumber:  utils.NullStringToString(m.SerialNumber),
-		StatusID:      m.StatusID,
-		PurchaseDate:  utils.NullTimeToPtr(m.PurchaseDate),
-		Owner:         utils.NullStringToString(m.Owner),
-		Location:      utils.NullStringToString(m.Location),
-		LastCheckDate: utils.NullTimeToPtr(m.LastCheckDate),
-		LastChecker:   utils.NullStringToString(m.LastChecker),
-		Notes:         utils.NullStringToString(m.Notes),
+		ID: model.ID,
+		ItemMasterID:  model.ItemMasterID,
+		Quantity:      model.Quantity,
+		StatusID:      model.StatusID,
+		SerialNumber:  utils.NullStringToPtr(model.SerialNumber),
+		PurchaseDate:  utils.NullTimeToPtr(model.PurchaseDate),
+		Owner:         utils.NullStringToPtr(model.Owner),
+		Location:      utils.NullStringToPtr(model.Location),
+		LastCheckDate: utils.NullTimeToPtr(model.LastCheckDate),
+		LastChecker:   utils.NullStringToPtr(model.LastChecker),
+		Notes:         utils.NullStringToPtr(model.Notes),
 	}
 }
 
@@ -50,24 +45,11 @@ func toDomainAssetMaster(m model.AssetsMaster) domain.AssetMaster {
 	return ret_value
 }
 
-func toDomainAssetsLend(m model.AssetsLend) domain.AssetsLend {
-	return domain.AssetsLend{
-		ID:                 m.ID,
-		AssetID:            m.AssetID,
-		Borrower:           m.Borrower,
-		Quantity:           m.Quantity,
-		LendDate:           m.LendDate.Format("2006-01-02"),
-		ExpectedReturnDate: utils.NullTimeToPtrString(m.ExpectedReturnDate),
-		ActualReturnDate:   utils.NullTimeToPtrString(m.ActualReturnDate),
-		Notes:              utils.NullStringToPtr(m.Notes),
-	}
-}
-
 // --- 変換処理 ---
 func convertAssetsModelListToDomain(src []model.Asset) []domain.Asset {
 	result := make([]domain.Asset, 0, len(src))
 	for i := 0; i < len(src); i++ {
-		result = append(result, toDomainAsset(src[i]))
+		result = append(result, ModelToDomainAsset(src[i]))
 	}
 	return result
 }
@@ -80,44 +62,37 @@ func convertAssetMasterModelListToDomain(src []model.AssetsMaster) []domain.Asse
 	return result
 }
 
-func convertAssetsLendModelListToDomain(src []model.AssetsLend) []domain.AssetsLend {
-	result := make([]domain.AssetsLend, 0, len(src))
-	for i := 0; i < len(src); i++ {
-		result = append(result, toDomainAssetsLend(src[i]))
+func convertDomainToModel(domainAsset domain.CreateAssetRequest) (model.AssetsMaster, model.Asset) {
+	master := model.AssetsMaster{
+		Name:                 utils.PtrStringToString(domainAsset.Name),
+		ManagementCategoryID: utils.PtrInt64ToInt64(domainAsset.ManagementCategoryID),
+		GenreID:              utils.Int64ToNullInt64(domainAsset.GenreID),
+		Manufacturer:         utils.StringToNullString(domainAsset.Manufacturer),
+		ModelNumber:          utils.StringToNullString(domainAsset.ModelNumber),
 	}
-	return result
-}
 
-func convertToDomainAssetModel(domainAsset domain.CreateAssetRequest) model.AllDataOfAsset {
-	return model.AllDataOfAsset{
-		Asset: model.Asset{
-			ItemMasterID:  domainAsset.Asset.ItemMasterID,
-			Quantity:      domainAsset.Asset.Quantity,
-			SerialNumber:  utils.StringToNullString(domainAsset.Asset.SerialNumber),
-			StatusID:      domainAsset.Asset.StatusID,
-			PurchaseDate:  utils.StringToNullTime(domainAsset.Asset.PurchaseDate),
-			Owner:         utils.StringToNullString(domainAsset.Asset.Owner),
-			Location:      utils.StringToNullString(domainAsset.Asset.Location),
-			LastCheckDate: utils.StringToNullTime(domainAsset.Asset.LastCheckDate),
-			LastChecker:   utils.StringToNullString(domainAsset.Asset.LastChecker),
-			Notes:         utils.StringToNullString(domainAsset.Asset.Notes),
-		},
-		Master: model.AssetsMaster{
-			Name:                 domainAsset.AssetMaster.Name,
-			ManagementCategoryID: domainAsset.AssetMaster.ManagementCategoryID,
-			GenreID:              utils.Int64ToNullInt64(domainAsset.AssetMaster.GenreID),
-			Manufacturer:         utils.StringToNullString(domainAsset.AssetMaster.Manufacturer),
-			ModelNumber:          utils.StringToNullString(domainAsset.AssetMaster.ModelNumber),
-		},
+	asset := model.Asset{
+		ItemMasterID:   utils.PtrInt64ToInt64(domainAsset.AssetMasterID),
+		Quantity:       domainAsset.Quantity,
+		StatusID:       domainAsset.StatusID,
+		SerialNumber:   utils.StringToNullString(domainAsset.SerialNumber),
+		PurchaseDate:   utils.StringToNullTime(domainAsset.PurchaseDate),
+		Owner:          utils.StringToNullString(domainAsset.Owner),
+		Location:       utils.StringToNullString(domainAsset.Location),
+		LastCheckDate:  utils.StringToNullTime(domainAsset.LastCheckDate),
+		LastChecker:    utils.StringToNullString(domainAsset.LastChecker),
+		Notes:          utils.StringToNullString(domainAsset.Notes),
 	}
+
+	return master, asset
 }
 
 func convertToDomainEditAsset(editedAsset domain.EditAssetRequest) model.Asset {
 	return model.Asset{
 		ID:            editedAsset.AssetID,
-		Quantity:      editedAsset.Quantity,
+		Quantity:      utils.PtrIntToInt(editedAsset.Quantity),
 		SerialNumber:  utils.StringToNullString(editedAsset.SerialNumber),
-		StatusID:      editedAsset.StatusID,
+		StatusID:      utils.PtrInt64ToInt64(editedAsset.StatusID),
 		PurchaseDate:  utils.StringToNullTime(editedAsset.PurchaseDate),
 		Owner:         utils.StringToNullString(editedAsset.Owner),
 		Location:      utils.StringToNullString(editedAsset.Location),
@@ -128,19 +103,20 @@ func convertToDomainEditAsset(editedAsset domain.EditAssetRequest) model.Asset {
 }
 
 // --- サービス ---
+// POST /assets
 func (e *AssetService) CreateAssetWithMaster(newAsset domain.CreateAssetRequest) (bool, error) {
-	data := convertToDomainAssetModel(newAsset)
-	switch data.Master.ManagementCategoryID {
+	model_master,model_asset := convertDomainToModel(newAsset)
+	switch model_master.ManagementCategoryID {
 	case 1:
-		return assets.RegistrationEquipmentForIndivisual(e.DB, data)
+		return assets.CrateAssetIndivisual(e.DB, model_master, model_asset)
 	case 2:
-		return assets.RegistrationEquipmentForGeneral(e.DB, data)
+		return assets.CreateAssetCollective(e.DB, model_master, model_asset)
 	default:
-		return false, fmt.Errorf("未知の管理カテゴリID: %d", data.Master.ManagementCategoryID)
+		return false, fmt.Errorf("未知の管理カテゴリID: %d", model_master.ManagementCategoryID)
 	}
 }
 
-
+// GET /assets/all
 func (e *AssetService) GetAssetAll() ([]domain.Asset, error) {
 	dbAssets, err := assets.FetchAssetsAll(e.DB)
 	if err != nil {
@@ -149,6 +125,21 @@ func (e *AssetService) GetAssetAll() ([]domain.Asset, error) {
 	return convertAssetsModelListToDomain(dbAssets), nil
 }
 
+// GET /assets/:id
+func (e *AssetService) GetAssetById(id int) (domain.Asset, error) {
+	dbAsset, err := assets.FetchAssetsByID(e.DB, int64(id))
+	if err != nil {
+		return domain.Asset{}, err
+	}
+	return ModelToDomainAsset(*dbAsset), nil
+}
+
+// PUT /assets/edit/:id
+func (e *AssetService) PutAssetsEdit(editedAsset domain.EditAssetRequest, id int64) (bool, error) {
+	return assets.UpdateAsset(e.DB, convertToDomainEditAsset(editedAsset))
+}
+
+// GET /assets/master/all
 func (e *AssetService) GetAssetMasterAll() ([]domain.AssetMaster, error) {
 	dbAssetMasters, err := assets.FetchAllAssetsMaster(e.DB)
 	if err != nil {
@@ -157,6 +148,7 @@ func (e *AssetService) GetAssetMasterAll() ([]domain.AssetMaster, error) {
 	return convertAssetMasterModelListToDomain(dbAssetMasters), nil
 }
 
+// GET /assets/master/:id
 func (e *AssetService) GetAssetMasterById(id int) (domain.AssetMaster, error) {
 	dbAssetMaster, err := assets.FetchAssetsMasterByID(e.DB, int64(id))
 	if err != nil {
@@ -165,95 +157,12 @@ func (e *AssetService) GetAssetMasterById(id int) (domain.AssetMaster, error) {
 	return toDomainAssetMaster(*dbAssetMaster), nil
 }
 
+// DELETE /assets/master/:id 主キーはmasterの主キー
+// 将来的に責任分解する
 func (e *AssetService) DeleteAssetMasterById(id int) (bool, error) {
-	return assets.DeleteAssetMasterByID(e.DB, int64(id))
-}
-
-func (e *AssetService) GetAssetById(id int) (domain.Asset, error) {
-	dbAsset, err := assets.FetchAssetsByID(e.DB, int64(id))
+	status, err := assets.DeleteAssetMasterByID(e.DB, int64(id))
 	if err != nil {
-		return domain.Asset{}, err
+		return false, fmt.Errorf("failed to delete asset master by ID: %w", err)
 	}
-	return toDomainAsset(*dbAsset), nil
-}
-
-func (e *AssetService) PutAssetsEdit(editedAsset domain.EditAssetRequest) (bool, error) {
-	return assets.UpdateAsset(e.DB, convertToDomainEditAsset(editedAsset))
-}
-
-func (e *AssetService) PostLend(req domain.LendAssetRequest) (bool, error) {
-	modelLend := model.AssetsLend{
-		AssetID:            req.AssetID,
-		Borrower:           req.Borrower,
-		Quantity:           req.Quantity,
-		LendDate:           utils.MustParseDate(req.LendDate),
-		ExpectedReturnDate: utils.StringToNullTime(req.ExpectedReturnDate),
-		ActualReturnDate:   utils.StringToNullTime(req.ActualReturnDate),
-		Notes:              utils.StringToNullString(req.Notes),
-	}
-
-	//返り値はbool, int64, errorだがint64の主キーは何に使うか決めてないので _ にしてある
-	status, _, err := lends.RegisterLend(e.DB, modelLend)
-	if err != nil {
-		return false, fmt.Errorf("failed to register lend: %w", err)
-	}
-
 	return status, nil
-}
-
-func (e *AssetService) PostAssetReturnHistory(req domain.AssetReturnRequest) (bool, error) {
-	tx, err := e.DB.Begin()
-	if err != nil {
-		return false, fmt.Errorf("トランザクション開始失敗: %w", err)
-	}
-	// panic対策としてrollbackを保証
-	defer func() {
-		if p := recover(); p != nil {
-			_ = tx.Rollback()
-		}
-	}()
-
-	parsedDate, err := time.Parse("2006-01-02", req.ReturnDate)
-	if err != nil {
-		_ = tx.Rollback()
-		return false, fmt.Errorf("日付フォーマット不正: %w", err)
-	}
-
-	parsedNotes := utils.StringToNullString(req.Notes)
-	returnData := model.AssetReturn{
-		LendID:           req.LendID,
-		ReturnedQuantity: req.Quantity,
-		ReturnDate:       parsedDate,
-		Notes:            parsedNotes,
-	}
-
-	// --- asset_lendsの更新 ---
-	_, err = lends.UpdateReturnDateForAssetlist(tx, req.LendID, parsedDate, parsedNotes)
-
-	if err != nil {
-		_ = tx.Rollback()
-		return false, fmt.Errorf("貸出情報の更新に失敗: %w", err)
-	}
-
-	// --- asset_returnsの新規登録 ---
-	_, err = returns.RegisterAssetReturn(tx, returnData)
-	if err != nil {
-		_ = tx.Rollback()
-		return false, fmt.Errorf("返却履歴の登録に失敗: %w", err)
-	}
-
-	// --- commit ---
-	if err := tx.Commit(); err != nil {
-		return false, fmt.Errorf("コミットに失敗: %w", err)
-	}
-
-	return true, nil
-}
-
-func (e *AssetService) GetLends() ([]domain.AssetsLend, error) {
-	lendsData, err := lends.FetchLendsAll(e.DB)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch lends: %w", err)
-	}
-	return convertAssetsLendModelListToDomain(lendsData), nil
 }

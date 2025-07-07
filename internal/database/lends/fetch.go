@@ -41,7 +41,7 @@ func FetchLendsAll(db *sql.DB) ([]model.AssetsLend, error) {
 }
 
 // 特定資産IDの貸出情報を取得
-func FetchLendsByAssetID(db *sql.DB, assetID int) ([]model.AssetsLend, error) {
+func FetchLendsByAssetID(db *sql.DB, assetID int64) ([]model.AssetsLend, error) {
 	query := `SELECT id, asset_id, borrower, quantity, lend_date, expected_return_date, actual_return_date, notes FROM asset_lends WHERE asset_id = ? ORDER BY lend_date DESC, id DESC`
 
 	rows, err := db.Query(query, assetID)

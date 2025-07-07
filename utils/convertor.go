@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+
+
+
 //
 // --- 文字列 <-> Null型 変換ユーティリティ ---
 //
@@ -121,8 +124,7 @@ func Int64ToNullInt64(i *int64) sql.NullInt64 {
 func NullStringToPtr(ns sql.NullString) *string {
 	if ns.Valid {
 		s := ns.String // ローカル変数に値コピー
-		// log.Printf("[utils] NullStringToPtr: %s", s)
-		return &s // sはヒープ確保される
+		return &s
 	}
 	return nil
 }
@@ -130,9 +132,43 @@ func NullStringToPtr(ns sql.NullString) *string {
 // NullTimeToPtrString は sql.NullTime を "YYYY-MM-DD" 形式の *string に変換します。
 // Valid が false の場合は nil を返します。
 func NullTimeToPtrString(nt sql.NullTime) *string {
-	if nt.Valid {
-		str := nt.Time.Format("2006-01-02")
-		return &str
+	// 1. Validフラグをチェックします。
+	//    これがfalseの場合、DBの値はNULLです。
+	if !nt.Valid {
+		// NULLの場合は、文字列ポインタのゼロ値であるnilを返します。
+		return nil
 	}
-	return nil
+
+	// 2. 有効な場合、nt.Time（time.Time型）を
+	//    指定したフォーマットの文字列に変換します。
+	formatted := nt.Time.Format("2006-01-02")
+
+	// 3. 生成した文字列変数のアドレス（ポインタ）を返します。
+	return &formatted
 }
+
+// PtrInt64ToInt64 は *int64 を int64 に変換します。
+func PtrInt64ToInt64(ptr *int64) int64 {
+	// 1. ポインタがnilかどうかをチェックする
+	if ptr == nil {
+		// nilの場合は、デフォルト値（ここでは0）を返す
+		return 0
+	}
+	// 2. nilでなければ、`*`で値を取り出す
+	return *ptr
+}
+
+func PtrIntToInt(ptr *int) int {
+	if ptr == nil {
+		return 0 // nilの場合はデフォルト値0を返す
+	}
+	return *ptr // nilでなければポインタの値を返す
+}
+
+func PtrStringToString(ptr *string) string {
+	if ptr == nil {
+		return "" // nilの場合は空文字を返す
+	}
+	return *ptr // nilでなければポインタの値を返す
+}
+
