@@ -9,7 +9,7 @@ import (
 )
 
 // InitRouter は全てのルーターを初期化します
-func InitRouter(r *gin.Engine, h *handler.Handler, auh *handler.AuthHandler, nh *handler.NfcHandler,ah *handler.AssetHandler,lh *handler.LendHandler, dh *handler.DisposalHandler) {
+func InitRouter(r *gin.Engine, sh *handler.SystemHandler, auh *handler.AuthHandler, nh *handler.NfcHandler,ah *handler.AssetHandler,lh *handler.LendHandler, dh *handler.DisposalHandler) {
 	// Swagger UI: http://localhost:8080/swagger/index.html
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -17,14 +17,14 @@ func InitRouter(r *gin.Engine, h *handler.Handler, auh *handler.AuthHandler, nh 
 	api := r.Group("/api/v1")
 	{
 		// --- システム ---
-		api.GET("/ping", h.PingHandler)
+		api.GET("/ping", sh.PingHandler)
 
 		// --- 資産管理 (Assets) ---
 		assets := api.Group("/assets")
 		{
 			// 既存のエンドポイント
 			assets.POST("", ah.PostAssetsHandler)            // POST /assets
-			assets.GET("/all", ah.GetAssetsAllHandler)       // GET /assets/all (ユーザーの元コード /assetsAll に相当)
+			assets.GET("/all", ah.GetAssetsAllHandler)       // GET /assets/all
 			assets.GET("/:id", ah.GetAssetsByAssetIdHandler) // GET /assets/:id
 			assets.PUT("/edit/:id", ah.PutAssetsEditHandler) // PUT /assets/edit/:id
 
@@ -32,8 +32,8 @@ func InitRouter(r *gin.Engine, h *handler.Handler, auh *handler.AuthHandler, nh 
 			master := assets.Group("/master")
 			{
 				master.GET("/all", ah.GetAssetsMasterAllHandler)  // GET /assets/master/all
-				master.GET("/:id", ah.GetAssetsMasterByIdHandler) // GET /assets/master/:id
-				master.DELETE("/:id", ah.DeleteAssetsMasterHandler)     // DELETE /assets/master/:id
+				master.GET("/:id", ah.GetAssetsMasterByIdHandler) // GET /assets/master/:id 主キーはmasterの主キー
+				master.DELETE("/:id", ah.DeleteAssetsMasterHandler)     // DELETE /assets/master/:id 主キーはmasterの主キー
 			}
 
 			//【追加】棚卸・点検
@@ -45,11 +45,11 @@ func InitRouter(r *gin.Engine, h *handler.Handler, auh *handler.AuthHandler, nh 
 		lend := api.Group("/lend")
 		{
 			// 既存のエンドポイント
-			lend.GET("/all", lh.GetLendsHandler) // GET /lend/all (ユーザーの元コード /lends に相当)
+			lend.GET("/all", lh.GetLendsHandler) // GET /lend/all
 			// idはassetsテーブルの主キー
-			lend.POST("/:id", lh.PostLendHandler) // POST /lend/:id
+			lend.POST("/:id", lh.PostLendHandler) // POST /lend/:id idはassetsテーブルの主キー
 			// idはasset_lendsテーブルの主キー
-			lend.POST("/return/:id", lh.PostReturnHandler) // POST /lend/return/:id
+			lend.POST("/return/:id", lh.PostReturnHandler) // POST /lend/return/:id idはrendsテーブルの主キー
 			// idはasset_lendsテーブルの主キー
 			lend.GET("/:id", lh.GetLendByIdHandler) // GET /lend/:id
 

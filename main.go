@@ -37,7 +37,7 @@ func main() {
 	}))
 
 	// ハンドラーインスタンスを生成
-	h := handler.NewHandler(db)
+	sh := handler.NewSystemHandler()
 	auh := handler.NewAuthHandler(db)
 	ah:=handler.NewAssetHandler(db)
 	lh:= handler.NewLendHandler(db)
@@ -56,7 +56,7 @@ func main() {
 	// NFCハンドラーにはこのインスタンスを渡す
 	nh := handler.NewNfcHandler(nfcService)
 
-	router.InitRouter(r, h, auh, nh,ah,lh,dh)
+	router.InitRouter(r, sh, auh, nh,ah,lh,dh)
 
 	r.Run("0.0.0.0:8080")
 }
