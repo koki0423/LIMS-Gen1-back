@@ -29,6 +29,7 @@ type Asset struct {
 	PurchaseDate  sql.NullTime   `db:"purchase_date"`   // 購入日（NULL 可 / DATE）
 	Owner         sql.NullString `db:"owner"`           // 所有者（NULL 可 / VARCHAR(100)）
 	Location      sql.NullString `db:"location"`        // 保管場所（NULL 可 / VARCHAR(255)）
+	DefaultLocation sql.NullString `db:"default_location"` // デフォルト保管場所（NULL 可 / VARCHAR(255)）
 	LastCheckDate sql.NullTime   `db:"last_check_date"` // 最終確認日（NULL 可 / DATE）
 	LastChecker   sql.NullString `db:"last_checker"`    // 最終確認者（NULL 可 / VARCHAR(100)）
 	Notes         sql.NullString `db:"notes"`           // 備考欄（NULL 可 / TEXT）

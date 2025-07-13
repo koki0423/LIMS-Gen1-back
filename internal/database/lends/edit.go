@@ -20,7 +20,6 @@ func UpdateLend(db *sql.DB, asset model.AssetsLend) (bool, error) {
 	query := `
 		UPDATE asset_lends
 		SET 
-			asset_id = ?,
 			borrower = ?,
 			quantity = ?,
 			lend_date = ?,
@@ -29,7 +28,7 @@ func UpdateLend(db *sql.DB, asset model.AssetsLend) (bool, error) {
 			notes = ?
 		WHERE id = ?;`
 
-	res, err := tx.Exec(query, asset.AssetID, asset.Borrower, asset.Quantity, asset.LendDate, asset.ExpectedReturnDate, asset.ActualReturnDate, asset.Notes, asset.ID)
+	res, err := tx.Exec(query, asset.Borrower, asset.Quantity, asset.LendDate, asset.ExpectedReturnDate, asset.ActualReturnDate, asset.Notes, asset.ID)
 	if err != nil {
 		log.Println("資産貸出：更新エラー:", err)
 		tx.Rollback()

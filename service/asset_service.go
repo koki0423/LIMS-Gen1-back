@@ -28,6 +28,7 @@ func ModelToDomainAsset(model model.Asset) domain.Asset {
 		PurchaseDate:  utils.NullTimeToPtr(model.PurchaseDate),
 		Owner:         utils.NullStringToPtr(model.Owner),
 		Location:      utils.NullStringToPtr(model.Location),
+		DefaultLocation: utils.NullStringToPtr(model.DefaultLocation),
 		LastCheckDate: utils.NullTimeToPtr(model.LastCheckDate),
 		LastChecker:   utils.NullStringToPtr(model.LastChecker),
 		Notes:         utils.NullStringToPtr(model.Notes),
@@ -78,7 +79,7 @@ func convertDomainToModel(domainAsset domain.CreateAssetRequest) (model.AssetsMa
 		SerialNumber:   utils.StringToNullString(domainAsset.SerialNumber),
 		PurchaseDate:   utils.StringToNullTime(domainAsset.PurchaseDate),
 		Owner:          utils.StringToNullString(domainAsset.Owner),
-		Location:       utils.StringToNullString(domainAsset.Location),
+		Location:       utils.StringToNullString(domainAsset.DefaultLocation),
 		LastCheckDate:  utils.StringToNullTime(domainAsset.LastCheckDate),
 		LastChecker:    utils.StringToNullString(domainAsset.LastChecker),
 		Notes:          utils.StringToNullString(domainAsset.Notes),
@@ -106,6 +107,7 @@ func convertToDomainEditAsset(editedAsset domain.EditAssetRequest) model.Asset {
 // POST /assets
 func (e *AssetService) CreateAssetWithMaster(newAsset domain.CreateAssetRequest) (bool, error) {
 	model_master,model_asset := convertDomainToModel(newAsset)
+
 	switch model_master.ManagementCategoryID {
 	case 1:
 		return assets.CrateAssetIndivisual(e.DB, model_master, model_asset)
@@ -136,7 +138,8 @@ func (e *AssetService) GetAssetById(id int) (domain.Asset, error) {
 
 // PUT /assets/edit/:id
 func (e *AssetService) PutAssetsEdit(editedAsset domain.EditAssetRequest, id int64) (bool, error) {
-	return assets.UpdateAsset(e.DB, convertToDomainEditAsset(editedAsset))
+	
+	return assets.UpdateAsset(e.DB, convertToDomainEditAsset(editedAsset),id)
 }
 
 // GET /assets/master/all

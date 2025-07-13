@@ -2,10 +2,11 @@ package service
 
 import (
 	"database/sql"
-	"equipmentManager/utils"
 	"equipmentManager/domain"
 	"equipmentManager/internal/database/lends"
+	"equipmentManager/internal/database/assets"
 	model "equipmentManager/internal/database/model/tables"
+	"equipmentManager/utils"
 
 	"equipmentManager/internal/database/returns"
 	"fmt"
@@ -73,7 +74,7 @@ func (e *LendService) PostLend(req domain.LendAssetRequest) (bool, error) {
 }
 
 // POST /lend/return/:id
-func (e *LendService) PostReturn(req domain.ReturnAssetRequest) (bool, error) {
+func (e *LendService) PostReturn(req domain.ReturnAssetRequest, id int64) (bool, error) {
 	tx, err := e.DB.Begin()
 	if err != nil {
 		return false, fmt.Errorf("トランザクション開始失敗: %w", err)
@@ -85,6 +86,11 @@ func (e *LendService) PostReturn(req domain.ReturnAssetRequest) (bool, error) {
 		}
 	}()
 
+	assetID, err := lends.GetAssetIDByLendID(tx, id)
+	if err != nil {
+		return false, fmt.Errorf("貸出情報から資産IDの取得に失敗: %w", err)
+	}
+
 	parsedDate, err := time.Parse("2006-01-02", *req.ActualReturnDate)
 	if err != nil {
 		_ = tx.Rollback()
@@ -93,14 +99,14 @@ func (e *LendService) PostReturn(req domain.ReturnAssetRequest) (bool, error) {
 
 	parsedNotes := utils.StringToNullString(req.Notes)
 	returnData := model.AssetReturn{
-		LendID:           req.LendID,
+		LendID:           id,
 		ReturnedQuantity: req.Quantity,
 		ReturnDate:       parsedDate,
 		Notes:            parsedNotes,
 	}
 
 	// --- asset_lendsの更新 ---
-	_, err = lends.UpdateReturnDateForAssetlist(tx, req.LendID, parsedDate, parsedNotes)
+	_, err = lends.UpdateReturnDateForAssetlist(tx, id, parsedDate, parsedNotes)
 
 	if err != nil {
 		_ = tx.Rollback()
@@ -112,6 +118,12 @@ func (e *LendService) PostReturn(req domain.ReturnAssetRequest) (bool, error) {
 	if err != nil {
 		_ = tx.Rollback()
 		return false, fmt.Errorf("返却履歴の登録に失敗: %w", err)
+	}
+
+	// --- assetsテーブルの状態をリセット ---
+	err = assets.ResetAssetStatus(tx, assetID)
+	if err != nil {
+		return false, fmt.Errorf("資産情報の状態リセットに失敗: %w", err)
 	}
 
 	// --- commit ---
@@ -128,4 +140,45 @@ func (e *LendService) GetLendById(id int64) ([]domain.AssetsLend, error) {
 		return nil, fmt.Errorf("failed to fetch lends by ID: %w", err)
 	}
 	return convertAssetsLendModelListToDomain(lendDataList), nil
+}
+
+func (e *LendService) GetLendsWithName() ([]domain.LendingDetail, error) {
+	lendsData, err := lends.FetchAllLendingDetails(e.DB)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch lends with name: %w", err)
+	}
+	domain_data := make([]domain.LendingDetail, len(lendsData))
+	for i, lend := range lendsData {
+		domain_data[i] = domain.LendingDetail{
+			ID:                 lend.ID,
+			Borrower:           lend.Borrower,
+			Quantity:           lend.Quantity,
+			LendDate:           lend.LendDate,
+			ExpectedReturnDate: utils.NullTimeToPtrString(lend.ExpectedReturnDate),
+			Name:               lend.Name,
+			Notes:              utils.NullStringToPtr(lend.Notes),
+			Manufacturer:       utils.NullStringToPtr(lend.Manufacturer),
+			ModelNumber:        utils.NullStringToPtr(lend.ModelNumber),
+		}
+	}
+	return domain_data, nil
+}
+
+func (e *LendService) PutLendEdit(req domain.EditLendRequest, id int64) (bool, error) {
+	modelLend := model.AssetsLend{
+		ID:                 id,
+		Borrower:           req.Borrower,
+		Quantity:           req.Quantity,
+		LendDate:           utils.MustParseDate(req.LendDate),
+		ExpectedReturnDate: utils.StringToNullTime(req.ExpectedReturnDate),
+		ActualReturnDate:   utils.StringToNullTime(req.ActualReturnDate),
+		Notes:              utils.StringToNullString(req.Notes),
+	}
+
+	status, err := lends.UpdateLend(e.DB, modelLend)
+	if err != nil {
+		return false, fmt.Errorf("failed to update lend: %w", err)
+	}
+
+	return status, nil
 }

@@ -9,7 +9,7 @@ import (
 )
 
 // InitRouter は全てのルーターを初期化します
-func InitRouter(r *gin.Engine, sh *handler.SystemHandler, auh *handler.AuthHandler, nh *handler.NfcHandler,ah *handler.AssetHandler,lh *handler.LendHandler, dh *handler.DisposalHandler) {
+func InitRouter(r *gin.Engine, sh *handler.SystemHandler, auh *handler.AuthHandler, nh *handler.NfcHandler, ah *handler.AssetHandler, lh *handler.LendHandler, dh *handler.DisposalHandler) {
 	// Swagger UI: http://localhost:8080/swagger/index.html
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -31,12 +31,12 @@ func InitRouter(r *gin.Engine, sh *handler.SystemHandler, auh *handler.AuthHandl
 			// 備品マスタ
 			master := assets.Group("/master")
 			{
-				master.GET("/all", ah.GetAssetsMasterAllHandler)  // GET /assets/master/all
-				master.GET("/:id", ah.GetAssetsMasterByIdHandler) // GET /assets/master/:id 主キーはmasterの主キー
-				master.DELETE("/:id", ah.DeleteAssetsMasterHandler)     // DELETE /assets/master/:id 主キーはmasterの主キー
+				master.GET("/all", ah.GetAssetsMasterAllHandler)    // GET /assets/master/all
+				master.GET("/:id", ah.GetAssetsMasterByIdHandler)   // GET /assets/master/:id 主キーはmasterの主キー
+				master.DELETE("/:id", ah.DeleteAssetsMasterHandler) // DELETE /assets/master/:id 主キーはmasterの主キー
 			}
 
-			//【追加】棚卸・点検
+			// 気が向いたら実装
 			// idはassetsテーブルの主キー
 			assets.POST("/check/:id", ah.PostAssetsCheckHandler) // POST /assets/check/:id
 		}
@@ -46,27 +46,30 @@ func InitRouter(r *gin.Engine, sh *handler.SystemHandler, auh *handler.AuthHandl
 		{
 			// 既存のエンドポイント
 			lend.GET("/all", lh.GetLendsHandler) // GET /lend/all
-			// idはassetsテーブルの主キー
-			lend.POST("/:id", lh.PostLendHandler) // POST /lend/:id idはassetsテーブルの主キー
-			// idはasset_lendsテーブルの主キー
-			lend.POST("/return/:id", lh.PostReturnHandler) // POST /lend/return/:id idはrendsテーブルの主キー
-			// idはasset_lendsテーブルの主キー
-			lend.GET("/:id", lh.GetLendByIdHandler) // GET /lend/:id
 
-			//【追加】貸出情報の更新
+			/*ここのエンドポイント違和感に思うが，特定の備品を指定して貸出記録をつけるから備品テーブルの主キーを指定する*/
+			// idはassetsテーブルの主キー
+			lend.POST("/:id", lh.PostLendHandler) // POST /lend/:id
+			
+			// idはasset_lendsテーブルの主キー
+			lend.POST("/return/:id", lh.PostReturnHandler) // POST /lend/return/:id
+
+			// idはassetテーブルの主キー
+			lend.GET("/:id", lh.GetLendByIdHandler) // GET /lend/:id
+			lend.GET("/all/with-name", lh.GetLendsWithNameHandler) // GET /lend/all/with-name
+
+			//貸出情報の更新
 			// idはasset_lendsテーブルの主キー
 			lend.PUT("/edit/:id", lh.PutLendEditHandler) // PUT /lend/edit/:id
 
-			//【追加】利便性向上
-			lend.GET("/overdue", lh.GetLendOverdueHandler)                        // GET /lend/overdue
-			lend.GET("/user/:student_id", lh.GetLendByStudentIdHandler)           // GET /lend/user/:student_id
-			lend.GET("/history/:student_id", lh.GetLendHistoryByStudentIdHandler) // GET /lend/history/:student_id
+			/*必要になったら実装*/
+			// lend.GET("/user/:student_id", lh.GetLendByStudentIdHandler)           // GET /lend/user/:student_id
+			// lend.GET("/history/:student_id", lh.GetLendHistoryByStudentIdHandler) // GET /lend/history/:student_id
 		}
 
 		// --- 廃棄管理 (Disposal) ---
 		disposal := api.Group("/disposal")
 		{
-			//【追加】
 			// idはassetsテーブルの主キー
 			disposal.POST("/:id", dh.PostDisposalHandler)  // POST /disposal/:id
 			disposal.GET("/all", dh.GetDisposalAllHandler) // GET /disposal/all

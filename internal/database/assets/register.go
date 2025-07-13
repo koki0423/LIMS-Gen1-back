@@ -77,9 +77,11 @@ func createMaster(tx *sql.Tx, master model.AssetsMaster) (int64, error) {
 }
 
 // createAsset は資産をデータベースに登録する
+// 登録直後は場所＝デフォルト保管場所とする → 貸出時に場所を借りている人に変更するのでクエリパラメータのdefault_locationはlocationを入れる
+// 貸出時にownerが決まるので、ownerはnilのまま
 func createAsset(tx *sql.Tx, asset model.Asset) error {
-	query := `INSERT INTO assets (asset_master_id, quantity, serial_number, status_id, purchase_date, owner, location, last_check_date, last_checker, notes)
+	query := `INSERT INTO assets (asset_master_id, quantity, serial_number, status_id, purchase_date, location,default_location ,last_check_date, last_checker, notes)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	_, err := tx.Exec(query, asset.ItemMasterID, asset.Quantity, asset.SerialNumber, asset.StatusID, asset.PurchaseDate, asset.Owner, asset.Location, asset.LastCheckDate, asset.LastChecker, asset.Notes)
+	_, err := tx.Exec(query, asset.ItemMasterID, asset.Quantity, asset.SerialNumber, asset.StatusID, asset.PurchaseDate, asset.Location, asset.Location, asset.LastCheckDate, asset.LastChecker, asset.Notes)
 	return err
 }

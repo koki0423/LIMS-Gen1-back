@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"equipmentManager/domain"
 	"equipmentManager/service"
+	// "log"
 	"net/http"
 	"strconv"
 
@@ -30,6 +31,9 @@ func (ah *AssetHandler) PostAssetsHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
 		return
 	}
+
+	// log.Printf("Received request to create asset: %+v", req)
+	// log.Printf("purchace_date: %s", *req.PurchaseDate)
 
 	id, err := ah.Service.CreateAssetWithMaster(req)
 	if err != nil {
