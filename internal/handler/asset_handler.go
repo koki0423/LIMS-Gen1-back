@@ -106,12 +106,11 @@ func (ah *AssetHandler) PutAssetsEditHandler(c *gin.Context) {
 		return
 	}
 
-	success, err := ah.Service.PutAssetsEdit(domain_req, int64(int_id))
-	if err != nil || !success {
+	status, err := ah.Service.PutAssetsEdit(domain_req, int64(int_id))
+	if err != nil || !status {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Asset update failed: " + err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"message": "Asset updated successfully"})
 }
 

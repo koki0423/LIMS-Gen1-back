@@ -9,7 +9,7 @@ import (
 )
 
 // InitRouter は全てのルーターを初期化します
-func InitRouter(r *gin.Engine, sh *handler.SystemHandler, auh *handler.AuthHandler, nh *handler.NfcHandler, ah *handler.AssetHandler, lh *handler.LendHandler, dh *handler.DisposalHandler) {
+func InitRouter(r *gin.Engine, sh *handler.SystemHandler, auh *handler.AuthHandler, ah *handler.AssetHandler, lh *handler.LendHandler, dh *handler.DisposalHandler) {
 	// Swagger UI: http://localhost:8080/swagger/index.html
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -77,11 +77,12 @@ func InitRouter(r *gin.Engine, sh *handler.SystemHandler, auh *handler.AuthHandl
 			disposal.GET("/:id", dh.GetDisposalByIdHandler) // GET /disposal/:id
 		}
 
-		// --- NFC ---
-		nfc := api.Group("/nfc")
-		{
-			nfc.GET("/read", nh.GetNFC) // GET /nfc/read
-		}
+		// // --- NFC ---
+		// nfc := api.Group("/nfc")
+		// {
+		// 	nfc.GET("/read", nh.GetNFC) // GET /nfc/read
+		// }
+		
 		// 認証関連ルーターの初期化
 		initAuthRouter(api, auh)
 	}

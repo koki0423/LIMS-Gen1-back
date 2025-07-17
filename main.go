@@ -4,7 +4,6 @@ import (
 	"equipmentManager/internal/database/db"
 	"equipmentManager/internal/handler"
 	"equipmentManager/router"
-	"equipmentManager/service"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -43,20 +42,7 @@ func main() {
 	lh:= handler.NewLendHandler(db)
 	dh:= handler.NewDisposalHandler(db)
 
-
-	// シングルトンなNfcServiceインスタンスを生成
-	nfcService := service.NewNfcService()
-
-	nfcService.Dummy = true // テスト時だけtrue
-
-	// NFC読み取りgoroutineで常駐
-	go nfcService.RunNFCReader()
-	defer nfcService.Close()
-
-	// NFCハンドラーにはこのインスタンスを渡す
-	nh := handler.NewNfcHandler(nfcService)
-
-	router.InitRouter(r, sh, auh, nh,ah,lh,dh)
+	router.InitRouter(r, sh, auh,ah,lh,dh)
 
 	r.Run("0.0.0.0:8080")
 }
