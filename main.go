@@ -15,7 +15,7 @@ import (
 // @title           備品管理システム
 // @version         1.0
 // @description     研究室内の備品を管理するシステムです。
-// @host            localhost:8081
+// @host            localhost:8080
 // @BasePath        /api/v1
 
 func main() {
