@@ -15,7 +15,7 @@ import (
 // @title           備品管理システム
 // @version         1.0
 // @description     研究室内の備品を管理するシステムです。
-// @host            localhost:8080
+// @host            localhost:8081
 // @BasePath        /api/v1
 
 func main() {
@@ -44,5 +44,5 @@ func main() {
 
 	router.InitRouter(r, sh, auh,ah,lh,dh)
 
-	r.Run("0.0.0.0:8080")
+	r.Run("0.0.0.0:8081")
 }

@@ -13,18 +13,9 @@ func NewSystemHandler() *SystemHandler {
 	}
 }
 
-
-type PingResponse struct {
-	Message string `json:"message" example:"pong"`
-}
-
-type PingErrorResponse struct {
-	Error string `json:"error" example:"Internal Server Error"`
-}
-
 // PingHandler godoc
 // @Summary      Ping応答を確認
-// @Description  Ping応答を確認するためのハンドラーです。そもそもswaggerが動いていればpongは絶対返ってくるはず。
+// @Description  Ping応答を確認するためのハンドラー.そもそもswaggerが動いていればpongは絶対返ってくるはず。
 // @Tags         system
 // @Produce      json
 // @Success      200  {object}  PingResponse

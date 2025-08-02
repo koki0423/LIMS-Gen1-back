@@ -22,6 +22,17 @@ func NewDisposalHandler(db *sql.DB) *DisposalHandler {
 	}
 }
 
+// @Summary      資産の廃棄処理
+// @Description  指定された資産IDの資産を廃棄登録します。
+// @Tags         Disposal
+// @Accept       json
+// @Produce      json
+// @Param        id   path      int  true  "資産ID (Asset ID)"
+// @Param        body body      domain.CreateDisposalRequest true  "廃棄登録リクエスト"
+// @Success      201  {object}  handler.SuccessResponse
+// @Failure      400  {object}  handler.ErrorResponse
+// @Failure      500  {object}  handler.ErrorResponse
+// @Router       /disposal/{id} [post]
 // POST /disposal/:id
 func (dh *DisposalHandler) PostDisposalHandler(c *gin.Context) {
 	id := c.Param("id")
@@ -47,6 +58,13 @@ func (dh *DisposalHandler) PostDisposalHandler(c *gin.Context) {
 	c.JSON(201, gin.H{"message": "Disposal created successfully"})
 }
 
+// @Summary      全廃棄履歴の取得
+// @Description  全ての資産廃棄履歴を取得します。
+// @Tags         Disposal
+// @Produce      json
+// @Success      200  {object}  handler.DisposalListResponse
+// @Failure      500  {object}  handler.ErrorResponse
+// @Router       /disposal/all [get]
 // GET /disposal/all
 func (dh *DisposalHandler) GetDisposalAllHandler(c *gin.Context) {
 	allDisposals, err := dh.Service.GetDisposalAll()
@@ -60,6 +78,15 @@ func (dh *DisposalHandler) GetDisposalAllHandler(c *gin.Context) {
 	})
 }
 
+// @Summary      廃棄履歴の取得 (ID指定)
+// @Description  指定されたIDの廃棄履歴を取得します。
+// @Tags         Disposal
+// @Produce      json
+// @Param        id   path      int  true  "廃棄ID (Disposal ID)"
+// @Success      200  {object}  handler.DisposalResponseWrapper
+// @Failure      400  {object}  handler.ErrorResponse
+// @Failure      500  {object}  handler.ErrorResponse
+// @Router       /disposal/{id} [get]
 func (dh *DisposalHandler) GetDisposalByIdHandler(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
