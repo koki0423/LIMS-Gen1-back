@@ -3,12 +3,13 @@ package assets
 import (
 	"database/sql"
 	model "equipmentManager/internal/database/model/tables"
+	"fmt"
 	"log"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func CrateAssetIndivisual(db *sql.DB, master model.AssetsMaster, asset model.Asset) (bool, error) {
+func CrateAssetIndivisual(db *sql.DB, master model.AssetsMaster, asset model.Asset, genrePrefix string, dateStr string) (bool, error) {
 	//個別管理はQuantityを1に固定する
 	//フロントからは1が送られるはずだが一応再登録しておく
 	asset.Quantity = 1
@@ -25,6 +26,16 @@ func CrateAssetIndivisual(db *sql.DB, master model.AssetsMaster, asset model.Ass
 		return false, err
 	}
 	asset.ItemMasterID = masterId
+
+	managementNumber := fmt.Sprintf("%s-%s-%04d", genrePrefix, dateStr, masterId)
+
+	err = insertManagementNumber(tx, masterId, managementNumber)
+	if err != nil {
+		tx.Rollback()
+		log.Println("(個別管理)管理番号登録失敗:", err)
+		return false, err
+	}
+
 	err = createAsset(tx, asset)
 	if err != nil {
 		tx.Rollback()
@@ -39,19 +50,29 @@ func CrateAssetIndivisual(db *sql.DB, master model.AssetsMaster, asset model.Ass
 	return true, nil
 }
 
-func CreateAssetCollective(db *sql.DB, master model.AssetsMaster, asset model.Asset) (bool, error) {
+func CreateAssetCollective(db *sql.DB, master model.AssetsMaster, asset model.Asset, genrePrefix string, dateStr string) (bool, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		log.Println("(全体管理)トランザクション開始失敗:", err)
 		return false, err
 	}
-	res, err := createMaster(tx, master)
+	masterID, err := createMaster(tx, master)
 	if err != nil {
 		tx.Rollback()
 		log.Println("(全体管理)マスタ登録失敗:", err)
 		return false, err
 	}
-	asset.ItemMasterID = res
+
+	asset.ItemMasterID = masterID
+	managementNumber := fmt.Sprintf("%s-%s-%04d", genrePrefix, dateStr, masterID)
+
+	err = insertManagementNumber(tx, masterID, managementNumber)
+	if err != nil {
+		tx.Rollback()
+		log.Println("(全体管理)管理番号登録失敗:", err)
+		return false, err
+	}
+
 	err = createAsset(tx, asset)
 	if err != nil {
 		tx.Rollback()
@@ -68,12 +89,19 @@ func CreateAssetCollective(db *sql.DB, master model.AssetsMaster, asset model.As
 
 // createMaster は資産マスタをデータベースに登録し、登録されたマスタのIDを返す
 func createMaster(tx *sql.Tx, master model.AssetsMaster) (int64, error) {
-	query := "INSERT INTO assets_masters (name, management_category_id, genre_id, manufacturer, model_number) VALUES (?, ?, ?, ?, ?)"
-	res, err := tx.Exec(query, master.Name, master.ManagementCategoryID, master.GenreID.Int64, master.Manufacturer, master.ModelNumber)
+	log.Printf("Creating asset master: %+v\n", master)
+	query := "INSERT INTO assets_masters (management_number,name, management_category_id, genre_id, manufacturer, model_number) VALUES (?, ?, ?, ?, ?, ?)"
+	res, err := tx.Exec(query, master.ManagementNumber, master.Name, master.ManagementCategoryID, master.GenreID.Int64, master.Manufacturer, master.ModelNumber)
 	if err != nil {
 		return 0, err
 	}
 	return res.LastInsertId()
+}
+
+func insertManagementNumber(tx *sql.Tx, masterID int64, managementNumber string) error {
+	query := "UPDATE assets_masters SET management_number = ? WHERE id = ?"
+	_, err := tx.Exec(query, managementNumber, masterID)
+	return err
 }
 
 // createAsset は資産をデータベースに登録する

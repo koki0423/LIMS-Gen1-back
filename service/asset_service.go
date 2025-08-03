@@ -7,6 +7,7 @@ import (
 	model "equipmentManager/internal/database/model/tables"
 	"equipmentManager/utils"
 	"fmt"
+	"time"
 )
 
 type AssetService struct {
@@ -20,18 +21,18 @@ func NewAssetService(db *sql.DB) *AssetService {
 // --- ドメイン変換共通関数群 ---
 func ModelToDomainAsset(model model.Asset) domain.Asset {
 	return domain.Asset{
-		ID: model.ID,
-		ItemMasterID:  model.ItemMasterID,
-		Quantity:      model.Quantity,
-		StatusID:      model.StatusID,
-		SerialNumber:  utils.NullStringToPtr(model.SerialNumber),
-		PurchaseDate:  utils.NullTimeToPtr(model.PurchaseDate),
-		Owner:         utils.NullStringToPtr(model.Owner),
-		Location:      utils.NullStringToPtr(model.Location),
+		ID:              model.ID,
+		ItemMasterID:    model.ItemMasterID,
+		Quantity:        model.Quantity,
+		StatusID:        model.StatusID,
+		SerialNumber:    utils.NullStringToPtr(model.SerialNumber),
+		PurchaseDate:    utils.NullTimeToPtr(model.PurchaseDate),
+		Owner:           utils.NullStringToPtr(model.Owner),
+		Location:        utils.NullStringToPtr(model.Location),
 		DefaultLocation: utils.NullStringToPtr(model.DefaultLocation),
-		LastCheckDate: utils.NullTimeToPtr(model.LastCheckDate),
-		LastChecker:   utils.NullStringToPtr(model.LastChecker),
-		Notes:         utils.NullStringToPtr(model.Notes),
+		LastCheckDate:   utils.NullTimeToPtr(model.LastCheckDate),
+		LastChecker:     utils.NullStringToPtr(model.LastChecker),
+		Notes:           utils.NullStringToPtr(model.Notes),
 	}
 }
 
@@ -73,16 +74,16 @@ func convertDomainToModel(domainAsset domain.CreateAssetRequest) (model.AssetsMa
 	}
 
 	asset := model.Asset{
-		ItemMasterID:   utils.PtrInt64ToInt64(domainAsset.AssetMasterID),
-		Quantity:       domainAsset.Quantity,
-		StatusID:       domainAsset.StatusID,
-		SerialNumber:   utils.StringToNullString(domainAsset.SerialNumber),
-		PurchaseDate:   utils.StringToNullTime(domainAsset.PurchaseDate),
-		Owner:          utils.StringToNullString(domainAsset.Owner),
-		Location:       utils.StringToNullString(domainAsset.DefaultLocation),
-		LastCheckDate:  utils.StringToNullTime(domainAsset.LastCheckDate),
-		LastChecker:    utils.StringToNullString(domainAsset.LastChecker),
-		Notes:          utils.StringToNullString(domainAsset.Notes),
+		ItemMasterID:  utils.PtrInt64ToInt64(domainAsset.AssetMasterID),
+		Quantity:      domainAsset.Quantity,
+		StatusID:      domainAsset.StatusID,
+		SerialNumber:  utils.StringToNullString(domainAsset.SerialNumber),
+		PurchaseDate:  utils.StringToNullTime(domainAsset.PurchaseDate),
+		Owner:         utils.StringToNullString(domainAsset.Owner),
+		Location:      utils.StringToNullString(domainAsset.DefaultLocation),
+		LastCheckDate: utils.StringToNullTime(domainAsset.LastCheckDate),
+		LastChecker:   utils.StringToNullString(domainAsset.LastChecker),
+		Notes:         utils.StringToNullString(domainAsset.Notes),
 	}
 
 	return master, asset
@@ -103,16 +104,34 @@ func convertToDomainEditAsset(editedAsset domain.EditAssetRequest) model.Asset {
 	}
 }
 
+var categoryNameMap = map[int]string{
+	1: "IND",
+	2: "OFS",
+	3: "FAC",
+	4: "EMB",
+	5: "ADV",
+}
+
 // --- サービス ---
 // POST /assets
 func (e *AssetService) CreateAssetWithMaster(newAsset domain.CreateAssetRequest) (bool, error) {
-	model_master,model_asset := convertDomainToModel(newAsset)
+	genrePrefix, ok := categoryNameMap[int(*newAsset.GenreID)]
+	if !ok {
+		return false, fmt.Errorf("未知のジャンルID: %d", newAsset.GenreID)
+	}
+	loc, _ := time.LoadLocation("Asia/Tokyo")
+	dateStr := time.Now().In(loc).Format("20060102")
+
+	model_master, model_asset := convertDomainToModel(newAsset)
+
+	// 管理番号は登録時に生成するので適当な文字列を設定
+	model_master.ManagementNumber = "abc"
 
 	switch model_master.ManagementCategoryID {
 	case 1:
-		return assets.CrateAssetIndivisual(e.DB, model_master, model_asset)
+		return assets.CrateAssetIndivisual(e.DB, model_master, model_asset, genrePrefix, dateStr)
 	case 2:
-		return assets.CreateAssetCollective(e.DB, model_master, model_asset)
+		return assets.CreateAssetCollective(e.DB, model_master, model_asset, genrePrefix, dateStr)
 	default:
 		return false, fmt.Errorf("未知の管理カテゴリID: %d", model_master.ManagementCategoryID)
 	}
@@ -138,8 +157,8 @@ func (e *AssetService) GetAssetById(id int) (domain.Asset, error) {
 
 // PUT /assets/edit/:id
 func (e *AssetService) PutAssetsEdit(editedAsset domain.EditAssetRequest, id int64) (bool, error) {
-	
-	return assets.UpdateAsset(e.DB, convertToDomainEditAsset(editedAsset),id)
+
+	return assets.UpdateAsset(e.DB, convertToDomainEditAsset(editedAsset), id)
 }
 
 // GET /assets/master/all
