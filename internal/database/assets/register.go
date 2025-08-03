@@ -89,7 +89,6 @@ func CreateAssetCollective(db *sql.DB, master model.AssetsMaster, asset model.As
 
 // createMaster は資産マスタをデータベースに登録し、登録されたマスタのIDを返す
 func createMaster(tx *sql.Tx, master model.AssetsMaster) (int64, error) {
-	log.Printf("Creating asset master: %+v\n", master)
 	query := "INSERT INTO assets_masters (management_number,name, management_category_id, genre_id, manufacturer, model_number) VALUES (?, ?, ?, ?, ?, ?)"
 	res, err := tx.Exec(query, master.ManagementNumber, master.Name, master.ManagementCategoryID, master.GenreID.Int64, master.Manufacturer, master.ModelNumber)
 	if err != nil {
