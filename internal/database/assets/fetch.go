@@ -94,7 +94,7 @@ func FetchAllAssetsMaster(db *sql.DB) ([]model.AssetsMaster, error) {
 		log.Println("資産マスター一覧取得：トランザクション開始エラー:", err)
 		return nil, err
 	}
-	query := `SELECT * FROM assets_masters ORDER BY id DESC;`
+	query := `SELECT * FROM assets_masters ORDER BY id ASC;`
 	rows, err := tx.Query(query)
 	if err != nil {
 		log.Println("資産マスター一覧取得：クエリエラー:", err)
@@ -108,6 +108,7 @@ func FetchAllAssetsMaster(db *sql.DB) ([]model.AssetsMaster, error) {
 		var assetMaster model.AssetsMaster
 		err := rows.Scan(
 			&assetMaster.ID,
+			&assetMaster.ManagementNumber,
 			&assetMaster.Name,
 			&assetMaster.ManagementCategoryID,
 			&assetMaster.GenreID,
