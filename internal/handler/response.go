@@ -3,42 +3,42 @@ package handler
 import "equipmentManager/domain"
 
 /* --- 汎用レスポンス (前回定義したものと同じ) --- */
-// SuccessResponse は汎用的な成功レスポンスです
+// SuccessResponse は汎用的な成功レスポンス
 type SuccessResponse struct {
 	Message string `json:"message" example:"処理に成功しました"`
 }
 
-// ErrorResponse は汎用的なエラーレスポンスです
+// ErrorResponse は汎用的なエラーレスポンス
 type ErrorResponse struct {
-	Error string `json:"error" example:"不正なリクエストです"`
+	Error string `json:"error" example:"不正なリクエスト"`
 }
 
 /* --- Asset関連のレスポンス --- */
-// CreateAssetResponse は資産作成成功時のレスポンスです
+// CreateAssetResponse は資産作成成功時のレスポンス
 type CreateAssetResponse struct {
 	Message       string `json:"message" example:"Asset created successfully"`
 	AssetMasterID int64  `json:"asset_master_id" example:"101"`
 }
 
-// AssetListResponse は資産リストのレスポンスです
+// AssetListResponse は資産リストのレスポンス
 type AssetListResponse struct {
 	Message string         `json:"message" example:"Assets fetched successfully"`
 	Assets  []domain.Asset `json:"assets"`
 }
 
-// AssetResponse は資産単体のレスポンスです
+// AssetResponse は資産単体のレスポンス
 type AssetResponse struct {
 	Message string       `json:"message" example:"Asset fetched successfully"`
 	Asset   domain.Asset `json:"asset"`
 }
 
-// AssetMasterListResponse は資産マスターリストのレスポンスです
+// AssetMasterListResponse は資産マスターリストのレスポンス
 type AssetMasterListResponse struct {
 	Message string               `json:"message" example:"Asset masters fetched successfully"`
 	Masters []domain.AssetMaster `json:"masters"`
 }
 
-// AssetMasterResponse は資産マスター単体のレスポンスです
+// AssetMasterResponse は資産マスター単体のレスポンス
 type AssetMasterResponse struct {
 	Message string             `json:"message" example:"Asset master fetched successfully"`
 	Master  domain.AssetMaster `json:"master"`
@@ -62,13 +62,13 @@ type LendingDetailListResponse struct {
 }
 
 /* --- Disposal (廃棄) 関連レスポンス --- */
-// DisposalListResponse は廃棄情報リストのレスポンスです
+// DisposalListResponse は廃棄情報リストのレスポンス
 type DisposalListResponse struct {
 	Message   string                   `json:"message" example:"Disposals fetched successfully"`
 	Disposals []domain.DisposalResponse `json:"disposals"`
 }
 
-// DisposalResponseWrapper は廃棄情報単体のレスポンスです
+// DisposalResponseWrapper は廃棄情報単体のレスポンス
 type DisposalResponseWrapper struct {
 	Message  string                  `json:"message" example:"Disposal fetched successfully"`
 	Disposal domain.DisposalResponse `json:"disposal"`
