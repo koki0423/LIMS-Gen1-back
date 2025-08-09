@@ -16,8 +16,8 @@ type ErrorResponse struct {
 /* --- Asset関連のレスポンス --- */
 // CreateAssetResponse は資産作成成功時のレスポンス
 type CreateAssetResponse struct {
-	Message       string `json:"message" example:"Asset created successfully"`
-	AssetMasterID int64  `json:"asset_master_id" example:"101"`
+	Message          string `json:"message" example:"Asset created successfully"`
+	ManagementNumber string `json:"management_number" example:"OFS-yyyymmdd-xxxx"`
 }
 
 // AssetListResponse は資産リストのレスポンス
@@ -64,7 +64,7 @@ type LendingDetailListResponse struct {
 /* --- Disposal (廃棄) 関連レスポンス --- */
 // DisposalListResponse は廃棄情報リストのレスポンス
 type DisposalListResponse struct {
-	Message   string                   `json:"message" example:"Disposals fetched successfully"`
+	Message   string                    `json:"message" example:"Disposals fetched successfully"`
 	Disposals []domain.DisposalResponse `json:"disposals"`
 }
 

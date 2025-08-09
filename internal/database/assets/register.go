@@ -9,7 +9,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func CrateAssetIndivisual(db *sql.DB, master model.AssetsMaster, asset model.Asset, genrePrefix string, dateStr string) (bool, error) {
+func CrateAssetIndivisual(db *sql.DB, master model.AssetsMaster, asset model.Asset, genrePrefix string, dateStr string) (string, error) {
 	//個別管理はQuantityを1に固定する
 	//フロントからは1が送られるはずだが一応再登録しておく
 	asset.Quantity = 1
@@ -17,13 +17,13 @@ func CrateAssetIndivisual(db *sql.DB, master model.AssetsMaster, asset model.Ass
 	tx, err := db.Begin()
 	if err != nil {
 		log.Println("(個別管理)トランザクション開始失敗:", err)
-		return false, err
+		return "", err
 	}
 	masterId, err := createMaster(tx, master)
 	if err != nil {
 		tx.Rollback()
 		log.Println("(個別管理)マスタ登録失敗:", err)
-		return false, err
+		return "", err
 	}
 	asset.ItemMasterID = masterId
 
@@ -33,34 +33,34 @@ func CrateAssetIndivisual(db *sql.DB, master model.AssetsMaster, asset model.Ass
 	if err != nil {
 		tx.Rollback()
 		log.Println("(個別管理)管理番号登録失敗:", err)
-		return false, err
+		return "", err
 	}
 
 	err = createAsset(tx, asset)
 	if err != nil {
 		tx.Rollback()
 		log.Println("(個別管理)資産登録失敗:", err)
-		return false, err
+		return "", err
 	}
 	err = tx.Commit()
 	if err != nil {
 		log.Println("(個別管理)トランザクションコミット失敗:", err)
-		return false, err
+		return "", err
 	}
-	return true, nil
+	return managementNumber, nil
 }
 
-func CreateAssetCollective(db *sql.DB, master model.AssetsMaster, asset model.Asset, genrePrefix string, dateStr string) (bool, error) {
+func CreateAssetCollective(db *sql.DB, master model.AssetsMaster, asset model.Asset, genrePrefix string, dateStr string) (string, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		log.Println("(全体管理)トランザクション開始失敗:", err)
-		return false, err
+		return "", err
 	}
 	masterID, err := createMaster(tx, master)
 	if err != nil {
 		tx.Rollback()
 		log.Println("(全体管理)マスタ登録失敗:", err)
-		return false, err
+		return "", err
 	}
 
 	asset.ItemMasterID = masterID
@@ -70,21 +70,21 @@ func CreateAssetCollective(db *sql.DB, master model.AssetsMaster, asset model.As
 	if err != nil {
 		tx.Rollback()
 		log.Println("(全体管理)管理番号登録失敗:", err)
-		return false, err
+		return "", err
 	}
 
 	err = createAsset(tx, asset)
 	if err != nil {
 		tx.Rollback()
 		log.Println("(全体管理)資産登録失敗:", err)
-		return false, err
+		return "", err
 	}
 	err = tx.Commit()
 	if err != nil {
 		log.Println("(全体管理)トランザクションコミット失敗:", err)
-		return false, err
+		return "", err
 	}
-	return true, nil
+	return managementNumber, nil
 }
 
 // createMaster は資産マスタをデータベースに登録し、登録されたマスタのIDを返す

@@ -114,10 +114,10 @@ var categoryNameMap = map[int]string{
 
 // --- サービス ---
 // POST /assets
-func (e *AssetService) CreateAssetWithMaster(newAsset domain.CreateAssetRequest) (bool, error) {
+func (e *AssetService) CreateAssetWithMaster(newAsset domain.CreateAssetRequest) (string, error) {
 	genrePrefix, ok := categoryNameMap[int(*newAsset.GenreID)]
 	if !ok {
-		return false, fmt.Errorf("未知のジャンルID: %d", newAsset.GenreID)
+		return "", fmt.Errorf("未知のジャンルID: %d", newAsset.GenreID)
 	}
 	loc, _ := time.LoadLocation("Asia/Tokyo")
 	dateStr := time.Now().In(loc).Format("20060102")
@@ -133,7 +133,7 @@ func (e *AssetService) CreateAssetWithMaster(newAsset domain.CreateAssetRequest)
 	case 2:
 		return assets.CreateAssetCollective(e.DB, model_master, model_asset, genrePrefix, dateStr)
 	default:
-		return false, fmt.Errorf("未知の管理カテゴリID: %d", model_master.ManagementCategoryID)
+		return "", fmt.Errorf("未知の管理カテゴリID: %d", model_master.ManagementCategoryID)
 	}
 }
 

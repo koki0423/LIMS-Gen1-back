@@ -41,20 +41,17 @@ func (ah *AssetHandler) PostAssetsHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
 		return
 	}
-
-	// log.Printf("Received request to create asset: %+v", req)
-	// log.Printf("purchace_date: %s", *req.PurchaseDate)
-
-	id, err := ah.Service.CreateAssetWithMaster(req)
+	managementNumber, err := ah.Service.CreateAssetWithMaster(req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Asset creation failed: " + err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"message":         "Asset created successfully",
-		"asset_master_id": id,
-	})
+	res := CreateAssetResponse{
+		Message:          "Asset created successfully",
+		ManagementNumber: managementNumber,
+	}
+	c.JSON(http.StatusCreated, res)
 }
 
 // @Summary      全資産の一覧取得
