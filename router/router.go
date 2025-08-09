@@ -76,12 +76,6 @@ func InitRouter(r *gin.Engine, sh *handler.SystemHandler, auh *handler.AuthHandl
 			// idはasset_disposalsテーブルの主キー
 			disposal.GET("/:id", dh.GetDisposalByIdHandler) // GET /disposal/:id
 		}
-
-		// // --- NFC ---
-		// nfc := api.Group("/nfc")
-		// {
-		// 	nfc.GET("/read", nh.GetNFC) // GET /nfc/read
-		// }
 		
 		// 認証関連ルーターの初期化
 		initAuthRouter(api, auh)
