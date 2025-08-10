@@ -9,7 +9,7 @@ import (
 )
 
 // InitRouter は全てのルーターを初期化します
-func InitRouter(r *gin.Engine, sh *handler.SystemHandler, auh *handler.AuthHandler, ah *handler.AssetHandler, lh *handler.LendHandler, dh *handler.DisposalHandler) {
+func InitRouter(r *gin.Engine, sh *handler.SystemHandler, ath *handler.AttendanceHandler, auh *handler.AuthHandler, ah *handler.AssetHandler, lh *handler.LendHandler, dh *handler.DisposalHandler) {
 	// Swagger UI: http://localhost:8080/swagger/index.html
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -76,7 +76,15 @@ func InitRouter(r *gin.Engine, sh *handler.SystemHandler, auh *handler.AuthHandl
 			// idはasset_disposalsテーブルの主キー
 			disposal.GET("/:id", dh.GetDisposalByIdHandler) // GET /disposal/:id
 		}
-		
+
+		// --- 出席管理 (Attendance) ---
+		attendance := api.Group("/attendance")
+		{
+			attendance.POST("", ath.PostAttendanceHandler)            // POST /attendance
+			attendance.GET("/all", ath.GetAttendanceAllHandler)       // GET /attendance/all
+			attendance.GET("/:id", ath.GetAttendanceByIdHandler)     // GET /attendance/:id
+			attendance.GET("/today", ath.GetAttendanceTodayHandler) // GET /attendance/today}
+		}
 		// 認証関連ルーターの初期化
 		initAuthRouter(api, auh)
 	}

@@ -19,9 +19,19 @@ import (
 // @BasePath        /api/v1
 
 func main() {
-	db, err := db.ConnectDB()
+	cfg, err := db.LoadConfig("config/config.yaml")
 	if err != nil {
-		panic("Failed to connect to the database: " + err.Error())
+		panic(err)
+	}
+
+	assetsDB, err := db.Connect(cfg.AssetsDB)
+	if err != nil {
+		panic("Failed to connect to the asset database: " + err.Error())
+	}
+
+	attendanceDB, err := db.Connect(cfg.AttendanceDB)
+	if err != nil {
+		panic("Failed to connect to the attendance database: " + err.Error())
 	}
 
 	r := gin.Default()
@@ -37,12 +47,13 @@ func main() {
 
 	// ハンドラーインスタンスを生成
 	sh := handler.NewSystemHandler()
-	auh := handler.NewAuthHandler(db)
-	ah:=handler.NewAssetHandler(db)
-	lh:= handler.NewLendHandler(db)
-	dh:= handler.NewDisposalHandler(db)
+	auh := handler.NewAuthHandler(assetsDB)
+	ath := handler.NewAttendanceHandler(attendanceDB)
+	ah := handler.NewAssetHandler(assetsDB)
+	lh := handler.NewLendHandler(assetsDB)
+	dh := handler.NewDisposalHandler(assetsDB)
 
-	router.InitRouter(r, sh, auh,ah,lh,dh)
+	router.InitRouter(r, sh, ath, auh, ah, lh, dh)
 
 	r.Run("0.0.0.0:8080")
 }
