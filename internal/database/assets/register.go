@@ -1,114 +1,138 @@
 package assets
 
 import (
+	"context"
 	"database/sql"
-	model "equipmentManager/internal/database/model/tables"
 	"fmt"
 	"log"
+	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	model "equipmentManager/internal/database/model/tables"
 )
 
+// 個別管理（Quantityは常に1）
 func CrateAssetIndivisual(db *sql.DB, master model.AssetsMaster, asset model.Asset, genrePrefix string, dateStr string) (string, error) {
-	//個別管理はQuantityを1に固定する
-	//フロントからは1が送られるはずだが一応再登録しておく
 	asset.Quantity = 1
 
-	tx, err := db.Begin()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println("(個別管理)トランザクション開始失敗:", err)
 		return "", err
 	}
-	masterId, err := createMaster(tx, master)
+	defer func() { _ = tx.Rollback() }()
+
+	// 1) マスタ挿入（管理番号は後で付与）
+	masterID, err := createMaster(ctx, tx, master)
 	if err != nil {
-		tx.Rollback()
 		log.Println("(個別管理)マスタ登録失敗:", err)
 		return "", err
 	}
-	asset.ItemMasterID = masterId
 
-	managementNumber := fmt.Sprintf("%s-%s-%04d", genrePrefix, dateStr, masterId)
-
-	err = insertManagementNumber(tx, masterId, managementNumber)
-	if err != nil {
-		tx.Rollback()
+	// 2) 管理番号生成 → 付番
+	managementNumber := fmt.Sprintf("%s-%s-%04d", genrePrefix, dateStr, masterID)
+	if err := insertManagementNumber(ctx, tx, masterID, managementNumber); err != nil {
 		log.Println("(個別管理)管理番号登録失敗:", err)
 		return "", err
 	}
 
-	err = createAsset(tx, asset)
-	if err != nil {
-		tx.Rollback()
+	// 3) 資産挿入
+	asset.ItemMasterID = masterID
+	if err := createAsset(ctx, tx, asset); err != nil {
 		log.Println("(個別管理)資産登録失敗:", err)
 		return "", err
 	}
-	err = tx.Commit()
-	if err != nil {
+
+	if err := tx.Commit(); err != nil {
 		log.Println("(個別管理)トランザクションコミット失敗:", err)
 		return "", err
 	}
 	return managementNumber, nil
 }
 
+// 一括管理
 func CreateAssetCollective(db *sql.DB, master model.AssetsMaster, asset model.Asset, genrePrefix string, dateStr string) (string, error) {
-	tx, err := db.Begin()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		log.Println("(全体管理)トランザクション開始失敗:", err)
 		return "", err
 	}
-	masterID, err := createMaster(tx, master)
+	defer func() { _ = tx.Rollback() }()
+
+	masterID, err := createMaster(ctx, tx, master)
 	if err != nil {
-		tx.Rollback()
 		log.Println("(全体管理)マスタ登録失敗:", err)
 		return "", err
 	}
 
-	asset.ItemMasterID = masterID
 	managementNumber := fmt.Sprintf("%s-%s-%04d", genrePrefix, dateStr, masterID)
-
-	err = insertManagementNumber(tx, masterID, managementNumber)
-	if err != nil {
-		tx.Rollback()
+	if err := insertManagementNumber(ctx, tx, masterID, managementNumber); err != nil {
 		log.Println("(全体管理)管理番号登録失敗:", err)
 		return "", err
 	}
 
-	err = createAsset(tx, asset)
-	if err != nil {
-		tx.Rollback()
+	asset.ItemMasterID = masterID
+	if err := createAsset(ctx, tx, asset); err != nil {
 		log.Println("(全体管理)資産登録失敗:", err)
 		return "", err
 	}
-	err = tx.Commit()
-	if err != nil {
+
+	if err := tx.Commit(); err != nil {
 		log.Println("(全体管理)トランザクションコミット失敗:", err)
 		return "", err
 	}
 	return managementNumber, nil
 }
 
-// createMaster は資産マスタをデータベースに登録し、登録されたマスタのIDを返す
-func createMaster(tx *sql.Tx, master model.AssetsMaster) (int64, error) {
-	query := "INSERT INTO assets_masters (management_number,name, management_category_id, genre_id, manufacturer, model_number) VALUES (?, ?, ?, ?, ?, ?)"
-	res, err := tx.Exec(query, master.ManagementNumber, master.Name, master.ManagementCategoryID, master.GenreID.Int64, master.Manufacturer, master.ModelNumber)
+// --- 内部ユーティリティ ---
+
+// 管理番号なしでマスタを追加し、採番用のIDを返す
+func createMaster(ctx context.Context, tx *sql.Tx, master model.AssetsMaster) (int64, error) {
+	// management_numberは後更新にする
+	const q = `
+INSERT INTO assets_masters (name, management_category_id, genre_id, manufacturer, model_number)
+VALUES (?, ?, ?, ?, ?)`
+	res, err := tx.ExecContext(ctx, q,
+		master.Name,
+		master.ManagementCategoryID,
+		master.GenreID.Int64, // ここは型に合わせて（sql.NullInt64 なら .Int64）
+		master.Manufacturer,
+		master.ModelNumber,
+	)
 	if err != nil {
 		return 0, err
 	}
 	return res.LastInsertId()
 }
 
-func insertManagementNumber(tx *sql.Tx, masterID int64, managementNumber string) error {
-	query := "UPDATE assets_masters SET management_number = ? WHERE id = ?"
-	_, err := tx.Exec(query, managementNumber, masterID)
+func insertManagementNumber(ctx context.Context, tx *sql.Tx, masterID int64, managementNumber string) error {
+	const q = `UPDATE assets_masters SET management_number = ? WHERE id = ?`
+	_, err := tx.ExecContext(ctx, q, managementNumber, masterID)
 	return err
 }
 
-// createAsset は資産をデータベースに登録する
-// 登録直後は場所＝デフォルト保管場所とする → 貸出時に場所を借りている人に変更するのでクエリパラメータのdefault_locationはlocationを入れる
-// 貸出時にownerが決まるので、ownerはnilのまま
-func createAsset(tx *sql.Tx, asset model.Asset) error {
-	query := `INSERT INTO assets (asset_master_id, quantity, serial_number, status_id, purchase_date, location,default_location ,last_check_date, last_checker, notes)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	_, err := tx.Exec(query, asset.ItemMasterID, asset.Quantity, asset.SerialNumber, asset.StatusID, asset.PurchaseDate, asset.Location, asset.Location, asset.LastCheckDate, asset.LastChecker, asset.Notes)
+func createAsset(ctx context.Context, tx *sql.Tx, asset model.Asset) error {
+	// default_location に location を初期設定
+	const q = `
+INSERT INTO assets (asset_master_id, quantity, serial_number, status_id, purchase_date,
+                    location, default_location, last_check_date, last_checker, notes)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err := tx.ExecContext(ctx, q,
+		asset.ItemMasterID,
+		asset.Quantity,
+		asset.SerialNumber,
+		asset.StatusID,
+		asset.PurchaseDate,
+		asset.Location,
+		asset.Location,
+		asset.LastCheckDate,
+		asset.LastChecker,
+		asset.Notes,
+	)
 	return err
 }

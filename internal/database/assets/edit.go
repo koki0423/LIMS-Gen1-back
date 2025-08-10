@@ -1,30 +1,35 @@
 package assets
 
 import (
+	"context"
 	"database/sql"
+	"fmt"
+	"log"
+	"time"
 
 	model "equipmentManager/internal/database/model/tables"
-	_ "github.com/go-sql-driver/mysql"
-	"log"
-	"fmt"
 )
 
+// 単発更新：Tx不要／タイムアウト付与
 func UpdateAsset(db *sql.DB, updated model.Asset, id int64) (bool, error) {
 	updated.ID = id
-	// log.Printf("	資産情報更新：ID=%d, 数量=%d, シリアル番号=%s, ステータスID=%d, 購入日=%s, 所有者=%s, 配置場所=%s, 最終チェック日=%s, 最終チェック者=%s, メモ=%s",
-	// 	updated.ID, updated.Quantity, updated.SerialNumber, updated.StatusID, updated.PurchaseDate, updated.Owner, updated.Location, updated.LastCheckDate, updated.LastChecker, updated.Notes)
 
-	tx, err := db.Begin()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
 	}
+	defer func() { _ = tx.Rollback() }()
 
-	query := `UPDATE assets
-		SET quantity = ?, serial_number = ?, status_id = ?, purchase_date = ?, 
-		    owner = ?, location = ?, last_check_date = ?, last_checker = ?, notes = ?
-		WHERE id = ?`
+	const query = `
+UPDATE assets
+SET quantity = ?, serial_number = ?, status_id = ?, purchase_date = ?,
+    owner = ?, location = ?, last_check_date = ?, last_checker = ?, notes = ?
+WHERE id = ?`
 
-	_, err = tx.Exec(query,
+	if _, err := tx.ExecContext(ctx, query,
 		updated.Quantity,
 		updated.SerialNumber,
 		updated.StatusID,
@@ -35,35 +40,35 @@ func UpdateAsset(db *sql.DB, updated model.Asset, id int64) (bool, error) {
 		updated.LastChecker,
 		updated.Notes,
 		updated.ID,
-	)
-
-	if err != nil {
+	); err != nil {
 		log.Println("資産情報更新：エラー:", err)
-		tx.Rollback()
 		return false, err
 	}
 
-	if err = tx.Commit(); err != nil {
+	if err := tx.Commit(); err != nil {
 		log.Println("資産情報更新：コミットエラー:", err)
 		return false, err
 	}
-
 	log.Println("資産情報更新：成功")
 	return true, nil
 }
 
+// すでに外でTxを張っている想定のユーティリティ
 func ResetAssetStatus(tx *sql.Tx, assetID int64) error {
-	query := `UPDATE assets SET owner = NULL, location = default_location WHERE id = ?`
-	res, err := tx.Exec(query, assetID)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	const query = `UPDATE assets SET owner = NULL, location = default_location WHERE id = ?`
+	res, err := tx.ExecContext(ctx, query, assetID)
 	if err != nil {
 		log.Println("資産状態のリセットエラー:", err)
 		return err
 	}
-	rowsAffected, err := res.RowsAffected()
+	affected, err := res.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if rowsAffected == 0 {
+	if affected == 0 {
 		return fmt.Errorf("asset_id %d に該当する資産が見つかりません", assetID)
 	}
 	return nil

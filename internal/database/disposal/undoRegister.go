@@ -1,66 +1,79 @@
 package disposal
+
 import (
+	"context"
 	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
+	"fmt"
 	"log"
+	"time"
 )
 
-func UndoRegisterDisposal(db *sql.DB, assetId int) (bool, error) {
-	var disposalID int
-	var qty int
+func UndoRegisterDisposal(db *sql.DB, assetID int64) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		log.Println("資産廃棄取り消し：初期化エラー:", err)
 		return false, err
 	}
+	defer func() { _ = tx.Rollback() }()
 
-	// 最新の廃棄記録を取得（1件）
-	query := `
-		SELECT id, quantity 
-		FROM asset_disposals 
-		WHERE asset_id = ? 
-		ORDER BY disposal_date DESC 
-		LIMIT 1`
-	err = tx.QueryRow(query, assetId).Scan(&disposalID, &qty)
+	// 最新の廃棄記録を取得（日時同値の競合に備え id も降順）
+	var disposalID int64
+	var qty int64
+	err = tx.QueryRowContext(ctx, `
+		SELECT id, quantity
+		FROM asset_disposals
+		WHERE asset_id = ?
+		ORDER BY disposal_date DESC, id DESC
+		LIMIT 1`, assetID,
+	).Scan(&disposalID, &qty)
 	if err != nil {
-		log.Println("資産廃棄取り消し：記録取得エラー or 対象なし")
-		tx.Rollback()
+		if err == sql.ErrNoRows {
+			log.Println("資産廃棄取り消し：対象なし")
+		} else {
+			log.Println("資産廃棄取り消し：記録取得エラー:", err)
+		}
 		return false, err
 	}
 
-	// 廃棄記録削除
-	_, err = tx.Exec("DELETE FROM asset_disposals WHERE id = ?", disposalID)
-	if err != nil {
+	// 対象資産の行をロック（在庫とステータス更新の一貫性を保つ）
+	var curQty int64
+	if err := tx.QueryRowContext(ctx,
+		`SELECT quantity FROM assets WHERE id = ? FOR UPDATE`, assetID,
+	).Scan(&curQty); err != nil {
+		if err == sql.ErrNoRows {
+			return false, fmt.Errorf("asset_id %d が存在しません", assetID)
+		}
+		return false, err
+	}
+
+	// 廃棄記録を削除
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM asset_disposals WHERE id = ?`, disposalID,
+	); err != nil {
 		log.Println("資産廃棄取り消し：削除エラー:", err)
-		tx.Rollback()
 		return false, err
 	}
 
-	// 数量戻す（加算）
-	query = "UPDATE assets SET quantity = quantity + ? WHERE id = ?"
-	_, err = tx.Exec(query, qty, assetId)
-	if err != nil {
-		log.Println("資産廃棄取り消し：数量更新(加算)エラー:", err)
-		tx.Rollback()
+	// 数量を戻す（加算）＋在庫が正なら status を「正常(=1)」へ
+	// 一発更新でステータスも整合させる（quantity は式右辺の元値で計算される）
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE assets
+		SET quantity = quantity + ?,
+		    status_id = CASE WHEN quantity + ? > 0 THEN 1 ELSE status_id END
+		WHERE id = ?`,
+		qty, qty, assetID,
+	); err != nil {
+		log.Println("資産廃棄取り消し：数量/ステータス更新エラー:", err)
 		return false, err
 	}
 
-	// ステータス戻す（0個状態 → 1個以上になったら正常に）
-	query = "UPDATE assets SET status_id = 1 WHERE id = ? AND quantity > 0"
-	_, err = tx.Exec(query, assetId)
-	if err != nil {
-		log.Println("資産廃棄取り消し：ステータス更新(正常)エラー:", err)
-		tx.Rollback()
-		return false, err
-	}
-
-	err = tx.Commit()
-	if err != nil {
+	if err := tx.Commit(); err != nil {
 		log.Println("資産廃棄取り消し：コミットエラー:", err)
 		return false, err
 	}
-
 	log.Println("資産廃棄取り消し：成功")
 	return true, nil
 }
