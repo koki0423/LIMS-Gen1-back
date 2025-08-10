@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
-	"equipmentManager/internal/database/developer"
-	"equipmentManager/internal/database/utils"
+	"equipmentManager/internal/database/assets/developer"
+	"equipmentManager/internal/database/assets/utils"
 	"github.com/golang-jwt/jwt/v5"
 )
 

@@ -9,7 +9,7 @@ import (
 	// "equipmentManager/disposal"
 	// "equipmentManager/developer"
 	"equipmentManager/internal/database/model/tables"
-	"equipmentManager/internal/database/utils"
+	"equipmentManager/internal/database/assets/utils"
 	_ "github.com/go-sql-driver/mysql"
 	// "log"
 )

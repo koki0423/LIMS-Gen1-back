@@ -3,7 +3,7 @@ package service
 import (
 	"database/sql"
 	"equipmentManager/domain"
-	"equipmentManager/internal/database/disposal"
+	"equipmentManager/internal/database/assets/disposal"
 	model "equipmentManager/internal/database/model/tables"
 	"fmt"
 	time "time"
