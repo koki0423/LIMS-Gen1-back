@@ -24,3 +24,6 @@ yarn-error.log*
 
 # Local config file
 config.yaml
+
+.csv
+.txt
