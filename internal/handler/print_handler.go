@@ -3,13 +3,13 @@ package handler
 import (
 	"database/sql"
 	"net/http"
-	"strconv"
 	"time"
 	"context"
 
 	"github.com/gin-gonic/gin"
 
 	"equipmentManager/service"
+	"equipmentManager/domain"
 )
 
 type PrintHandler struct {
@@ -25,23 +25,20 @@ func NewPrintHandler(db *sql.DB) *PrintHandler {
 }
 
 // POST /print
-func (ph *PrintHandler) PostPrintHandler(c *gin.Context) {
-	var input struct {
-		StudentNumber string `json:"student_number"`
-	}
-
-	if err := c.ShouldBindJSON(&input); err != nil || input.StudentNumber == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "無効なJSON（必須）"})
+func (ph *PrintHandler) PostPrinthandler(c *gin.Context) {
+	var inputDomain domain.PrintRequest
+	if err := c.ShouldBindJSON(&inputDomain); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "無効なJSON"})
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
 	defer cancel()
 
-	a, err := ph.Service.Create(ctx, input.StudentNumber)
+	_, err := ph.Service.Create(ctx, inputDomain)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "登録失敗"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "印刷エラー"})
 		return
 	}
-	c.JSON(http.StatusOK, a)
+	c.JSON(http.StatusOK, "印刷リクエストが正常に処理されました")
 }
