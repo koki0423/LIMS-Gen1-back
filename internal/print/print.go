@@ -262,7 +262,6 @@ func PrintLabels(data []model.PrintRow, p model.PrintParams) error {
 	if out := os.Getenv("PRINT_OUTPUT_DIR"); out != "" {
 		// 環境変数があればそちらを優先
 		baseDir = out
-		log.Printf("Using PRINT_OUTPUT_DIR: %s\n", baseDir)
 	} else {
 		// このソースファイルのディレクトリを取得（ビルド後も有効）
 		_, thisFile, _, ok := runtime.Caller(0)
@@ -278,8 +277,6 @@ func PrintLabels(data []model.PrintRow, p model.PrintParams) error {
 		return fmt.Errorf("%w: %s", err, ErrorMessageRunPrint)
 	}
 
-	log.Printf("SPC10.exe found at: %s\n", spc10)
-
 	// 2) 印刷対象があるか
 	if getPrintJobCount(data) == 0 {
 		return fmt.Errorf("%w: %s", ErrNoPrintableSelected, ErrorMessageNoPrintJob)
@@ -292,8 +289,6 @@ func PrintLabels(data []model.PrintRow, p model.PrintParams) error {
 	if p.EnablePrintLog {
 		printLog = filepath.Join(baseDir, PrintLogFilename)
 	}
-
-	log.Printf("Using TapeWidth file: %s\n", tapeWidthFile)
 
 	// /GT 用ダミーテンプレ（実際に存在する .lw1 を指定）
 	dummyTpl := filepath.Join(baseDir, DefaultTemplateDummyRel)
@@ -338,8 +333,6 @@ func PrintLabels(data []model.PrintRow, p model.PrintParams) error {
 	// 4) テンプレートの存在確認
 	templateFilename := fmt.Sprintf("%d_%s.lw1", p.TemplateWidthMM, p.BarcodeType)
 	templatePath := filepath.Join(baseDir, templateFilename)
-
-	log.Printf("Using template: %s\n", templatePath)
 
 	// テプラのバグかわからないけど，稀にセットしたテープをAPI経由だと認識しないのでコメントアウト
 	// ただ，テープのセットし直しとかごにょごにょすると認識する．どちらにせよ，指定幅と異なっても印刷できればいいのでしばらくはコメントアウト

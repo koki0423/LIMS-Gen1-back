@@ -16,7 +16,7 @@ func FetchAssetsAll(db *sql.DB) ([]model.Asset, error) {
 
 	// 列を明示（スキーマ変更に強くする）
 	const query = `
-SELECT id, item_master_id, quantity, serial_number, status_id,
+SELECT id, asset_master_id, quantity, serial_number, status_id,
        purchase_date, owner, location, default_location,
        last_check_date, last_checker, notes
 FROM assets
@@ -67,7 +67,7 @@ func FetchAssetsByID(db *sql.DB, assetID int64) (*model.Asset, error) {
 	defer cancel()
 
 	const query = `
-SELECT id, item_master_id, quantity, serial_number, status_id,
+SELECT id, asset_master_id, quantity, serial_number, status_id,
        purchase_date, owner, location, default_location,
        last_check_date, last_checker, notes
 FROM assets
