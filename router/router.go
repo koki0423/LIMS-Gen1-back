@@ -9,7 +9,7 @@ import (
 )
 
 // InitRouter は全てのルーターを初期化します
-func InitRouter(r *gin.Engine, sh *handler.SystemHandler, ath *handler.AttendanceHandler, auh *handler.AuthHandler, ah *handler.AssetHandler, lh *handler.LendHandler, dh *handler.DisposalHandler) {
+func InitRouter(r *gin.Engine, sh *handler.SystemHandler, ath *handler.AttendanceHandler, auh *handler.AuthHandler, ah *handler.AssetHandler, lh *handler.LendHandler, dh *handler.DisposalHandler,ph *handler.PrintHandler) {
 	// Swagger UI: http://localhost:8080/swagger/index.html
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -84,6 +84,12 @@ func InitRouter(r *gin.Engine, sh *handler.SystemHandler, ath *handler.Attendanc
 			attendance.GET("/all", ath.GetAttendanceAllHandler)       // GET /attendance/all
 			attendance.GET("/:id", ath.GetAttendanceByIdHandler)     // GET /attendance/:id
 			attendance.GET("/today", ath.GetAttendanceTodayHandler) // GET /attendance/today}
+		}
+
+		// --- バーコード印刷管理（Print）---
+		print:=api.Group("/print")
+		{
+			print.POST("",ph.PostPrinthandler)//POST /print
 		}
 		// 認証関連ルーターの初期化
 		initAuthRouter(api, auh)

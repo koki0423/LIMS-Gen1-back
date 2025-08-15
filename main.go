@@ -52,8 +52,9 @@ func main() {
 	ah := handler.NewAssetHandler(assetsDB)
 	lh := handler.NewLendHandler(assetsDB)
 	dh := handler.NewDisposalHandler(assetsDB)
+	ph := handler.NewPrintHandler(assetsDB)
 
-	router.InitRouter(r, sh, ath, auh, ah, lh, dh)
+	router.InitRouter(r, sh, ath, auh, ah, lh, dh, ph)
 
 	r.Run("0.0.0.0:8080")
 }
