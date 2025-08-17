@@ -26,3 +26,8 @@ type AttendanceListResponse struct {
 	Total   int64            `json:"total"`
 	Message string           `json:"message,omitempty"`
 }
+
+type AttendanceRanking struct {
+	StudentID    string  `json:"student_id"`
+	AttendanceCount int     `json:"attendance_count"`
+}

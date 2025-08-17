@@ -41,13 +41,16 @@ func (s *AttendanceService) ListTodayJST(ctx context.Context, studentNumber stri
 	return s.repo.FindTodayJST(ctx, studentNumber)
 }
 
+func (s *AttendanceService) GetRanking(ctx context.Context) ([]attendance.AttendanceRanking, error) {
+	return s.repo.GetRanking(ctx)
+}
+
 func (s *AttendanceService) FindByStudentAndRange(
 	ctx context.Context,
 	studentID string,
 	startUTC, endUTC time.Time,
 	sort string, page, size int,
 ) ([]attendance.AttendanceItem, int64, error) {
-
 	orderBy := "timestamp DESC"
 	switch strings.ToLower(sort) {
 	case "date:asc", "timestamp:asc":
