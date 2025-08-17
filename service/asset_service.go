@@ -250,3 +250,11 @@ func guessGenreIDs(q string) []int64 {
 	}
 	return out
 }
+
+func (e *AssetService) GetAssetSummary() (domain.AssetSummary, error) {
+	dbSummary, err := assets.FetchAssetSummary(e.DB)
+	if err != nil {
+		return domain.AssetSummary{}, fmt.Errorf("failed to fetch asset summary: %w", err)
+	}
+	return dbSummary, nil
+}

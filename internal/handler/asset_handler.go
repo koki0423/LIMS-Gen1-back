@@ -264,5 +264,18 @@ func (ah *AssetHandler) AssetSearchHandler(c *gin.Context) {
 	})
 }
 
+func (ah *AssetHandler) GetAssetSummaryHandler(c *gin.Context) {
+	summary, err := ah.Service.GetAssetSummary()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch asset summary: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Asset summary fetched successfully",
+		"summary": summary,
+	})
+}
+
 // 将来的実装
 func (ah *AssetHandler) PostAssetsCheckHandler(c *gin.Context) {}

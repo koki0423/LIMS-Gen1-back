@@ -37,6 +37,8 @@ func InitRouter(r *gin.Engine, sh *handler.SystemHandler, ath *handler.Attendanc
 			*/
 			assets.GET("/search", ah.AssetSearchHandler)
 
+			assets.GET("/summary", ah.GetAssetSummaryHandler)
+
 			// 備品マスタ
 			master := assets.Group("/master")
 			{

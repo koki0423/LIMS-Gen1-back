@@ -100,3 +100,16 @@ type CreateReturnRequest struct {
 	Notes            string `json:"notes"`
 	ReturnedQuantity int    `json:"returned_quantity"` // 通常は1
 }
+
+// AssetSummary は資産の集計情報
+type AssetSummary struct {
+	TotalAssets     int64 `json:"total_assets"`     // 総資産数
+	LendingAssets   int64 `json:"lending_assets"`   // 貸出中の資産数
+	BreakdownAssets int64 `json:"breakdown_assets"` // 故障中の資産数
+	DisposeAssets   int64 `json:"dispose_assets"`   // 廃棄済みの資産数
+	IND_Assets      int64 `json:"ind_assets"`       // 個人ジャンル資産数
+	OFS_Assets      int64 `json:"ofs_assets"`       // 事務ジャンル資産数
+	FAC_Assets      int64 `json:"fac_assets"`       // ファシリティジャンル資産数
+	EMB_Assets      int64 `json:"emb_assets"`       // 組込みシステムジャンル資産数
+	ADV_Assets      int64 `json:"adv_assets"`       // 高度情報演習ジャンル資産数
+}
