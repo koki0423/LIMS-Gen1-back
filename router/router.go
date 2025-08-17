@@ -9,7 +9,7 @@ import (
 )
 
 // InitRouter は全てのルーターを初期化します
-func InitRouter(r *gin.Engine, sh *handler.SystemHandler, ath *handler.AttendanceHandler, auh *handler.AuthHandler, ah *handler.AssetHandler, lh *handler.LendHandler, dh *handler.DisposalHandler,ph *handler.PrintHandler) {
+func InitRouter(r *gin.Engine, sh *handler.SystemHandler, ath *handler.AttendanceHandler, auh *handler.AuthHandler, ah *handler.AssetHandler, lh *handler.LendHandler, dh *handler.DisposalHandler, ph *handler.PrintHandler) {
 	// Swagger UI: http://localhost:8080/swagger/index.html
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
@@ -22,11 +22,20 @@ func InitRouter(r *gin.Engine, sh *handler.SystemHandler, ath *handler.Attendanc
 		// --- 資産管理 (Assets) ---
 		assets := api.Group("/assets")
 		{
-			// 既存のエンドポイント
 			assets.POST("", ah.PostAssetsHandler)            // POST /assets
 			assets.GET("/all", ah.GetAssetsAllHandler)       // GET /assets/all
 			assets.GET("/:id", ah.GetAssetsByAssetIdHandler) // GET /assets/:id
 			assets.PUT("/edit/:id", ah.PutAssetsEditHandler) // PUT /assets/edit/:id
+
+			/*
+			検索方法例
+			GET /api/v1/assets/master/search?q=IND&page=1&size=20       // コード一致 → genre_id=1 にヒット
+			GET /api/v1/assets/master/search?q=個人                     // 日本語名部分一致 → genre_id=1 にヒット
+			GET /api/v1/assets/master/search?q=3                        // 数値ID → genre_id=3 にヒット
+			GET /api/v1/assets/master/search?q=FAC-20250803-0038        // management_number 部分一致
+			GET /api/v1/assets/master/search?q=DL360                    // name 部分一致
+			*/
+			assets.GET("/search", ah.AssetSearchHandler)
 
 			// 備品マスタ
 			master := assets.Group("/master")
@@ -44,18 +53,17 @@ func InitRouter(r *gin.Engine, sh *handler.SystemHandler, ath *handler.Attendanc
 		// --- 貸出・返却管理 (Lend/Return) ---
 		lend := api.Group("/lend")
 		{
-			// 既存のエンドポイント
 			lend.GET("/all", lh.GetLendsHandler) // GET /lend/all
 
 			/*ここのエンドポイント違和感に思うが，特定の備品を指定して貸出記録をつけるから備品テーブルの主キーを指定する*/
 			// idはassetsテーブルの主キー
 			lend.POST("/:id", lh.PostLendHandler) // POST /lend/:id
-			
+
 			// idはasset_lendsテーブルの主キー
 			lend.POST("/return/:id", lh.PostReturnHandler) // POST /lend/return/:id
 
 			// idはassetテーブルの主キー
-			lend.GET("/:id", lh.GetLendByIdHandler) // GET /lend/:id
+			lend.GET("/:id", lh.GetLendByIdHandler)                // GET /lend/:id
 			lend.GET("/all/with-name", lh.GetLendsWithNameHandler) // GET /lend/all/with-name
 
 			//貸出情報の更新
@@ -80,17 +88,18 @@ func InitRouter(r *gin.Engine, sh *handler.SystemHandler, ath *handler.Attendanc
 		// --- 出席管理 (Attendance) ---
 		attendance := api.Group("/attendance")
 		{
-			attendance.POST("", ath.PostAttendanceHandler)            // POST /attendance
-			attendance.GET("/all", ath.GetAttendanceAllHandler)       // GET /attendance/all
-			attendance.GET("/:id", ath.GetAttendanceByIdHandler)     // GET /attendance/:id
-			attendance.GET("/api/v1/attendance/byIdWithDate", ath.GetByIdWithDate)
+			attendance.POST("", ath.PostAttendanceHandler)              // POST /attendance
+			attendance.GET("/all", ath.GetAttendanceAllHandler)         // GET /attendance/all
+			attendance.GET("/:id", ath.GetAttendanceByIdHandler)        // GET /attendance/:id
+			attendance.GET("/ranking", ath.GetAttendanceRankingHandler) // GET /attendance/ranking
+			attendance.GET("/byIdWithDate", ath.GetByIdWithDate)
 			attendance.GET("/today", ath.GetAttendanceTodayHandler) // GET /attendance/today}
 		}
 
 		// --- バーコード印刷管理（Print）---
-		print:=api.Group("/print")
+		print := api.Group("/print")
 		{
-			print.POST("",ph.PostPrinthandler)//POST /print
+			print.POST("", ph.PostPrinthandler) //POST /print
 		}
 		// 認証関連ルーターの初期化
 		initAuthRouter(api, auh)

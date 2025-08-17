@@ -101,6 +101,49 @@ func (r *Repository) FindTodayJST(ctx context.Context, studentNumber string) ([]
 	return list, nil
 }
 
+func (r *Repository) GetRanking(ctx context.Context) ([]attendance.AttendanceRanking, error) {
+	// JSTの今月 [start, end) を計算
+	jst, _ := time.LoadLocation("Asia/Tokyo")
+	now := time.Now().In(jst)
+	startJST := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, jst)
+	endJST := startJST.AddDate(0, 1, 0)
+
+	// UTC保存なら UTC に変換して渡す（JST保存なら startJST, endJST をそのまま使う）
+	start := startJST.UTC()
+	end := endJST.UTC()
+
+	const query = "SELECT student_number, COUNT(*) AS cnt " +
+		"FROM attendances " +
+		"WHERE `timestamp` >= ? AND `timestamp` < ? " +
+		"GROUP BY student_number " +
+		"ORDER BY cnt DESC, student_number " +
+		"LIMIT 5"
+
+	rows, err := r.DB.QueryContext(ctx, query, start, end)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	rankings := make([]attendance.AttendanceRanking, 0, 5)
+	for rows.Next() {
+		var rec attendance.AttendanceRanking
+		// AttendanceRanking は ↓ みたいに int64 推奨
+		// type AttendanceRanking struct {
+		//   StudentID       string `json:"student_number"`
+		//   AttendanceCount int64  `json:"count"`
+		// }
+		if err := rows.Scan(&rec.StudentID, &rec.AttendanceCount); err != nil {
+			return nil, err
+		}
+		rankings = append(rankings, rec)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return rankings, nil
+}
+
 func (r *Repository) QueryByStudentAndRange(
 	ctx context.Context,
 	studentID string,
@@ -171,7 +214,9 @@ func (r *Repository) QueryByStudentAndRange(
 }
 
 func nsPtr(v sql.NullString) *string {
-	if !v.Valid { return nil }
+	if !v.Valid {
+		return nil
+	}
 	s := v.String
 	return &s
 }

@@ -83,6 +83,18 @@ func (ath *AttendanceHandler) GetAttendanceByIdHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, a)
 }
 
+func (ath *AttendanceHandler) GetAttendanceRankingHandler(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel()
+
+	ranking, err := ath.Service.GetRanking(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "取得失敗"})
+		return
+	}
+	c.JSON(http.StatusOK, ranking)
+}
+
 // GET /attendance/today?student_number=AL21034（任意）
 func (ath *AttendanceHandler) GetAttendanceTodayHandler(c *gin.Context) {
 	sn := c.Query("student_number")

@@ -1,13 +1,17 @@
 package service
 
 import (
+	"context"
 	"database/sql"
 	"equipmentManager/domain"
 	"equipmentManager/internal/database/assets"
 	model "equipmentManager/internal/database/model/tables"
 	"equipmentManager/utils"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
+	"log"
 )
 
 type AssetService struct {
@@ -204,4 +208,45 @@ func (e *AssetService) DeleteAssetMasterById(id int) (bool, error) {
 		return false, fmt.Errorf("failed to delete asset master by ID: %w", err)
 	}
 	return status, nil
+}
+
+func (e *AssetService) Search(ctx context.Context, q string, page, size int) ([]domain.AssetMaster, int64, error) {
+	// 学内コード/日本語名/数値ID から genre_id 候補を推定
+	genreIDs := guessGenreIDs(q)
+	log.Printf("Search: q=%q, genreIDs=%v\n", q, genreIDs)
+	return assets.SearchMasters(e.DB, ctx, q, genreIDs, page, size)
+}
+
+// 要件に出てきた5ジャンルを素直にマッピング
+func guessGenreIDs(q string) []int64 {
+	if q == "" {
+		return nil
+	}
+	normalized := strings.ToUpper(strings.TrimSpace(q))
+	jp := strings.TrimSpace(q)
+
+	// 数値ID指定（"3" など）
+	if id, err := strconv.ParseInt(normalized, 10, 64); err == nil && id >= 1 && id <= 9999 {
+		return []int64{id}
+	}
+
+	type g struct {
+		id         int64
+		code, name string
+	}
+	genres := []g{
+		{1, "IND", "個人"},
+		{2, "OFS", "事務"},
+		{3, "FAC", "ファシリティ"},
+		{4, "EMB", "組込みシステム"},
+		{5, "ADV", "高度情報演習"},
+	}
+
+	out := make([]int64, 0, 2)
+	for i := 0; i < len(genres); i++ {
+		if normalized == genres[i].code || strings.Contains(genres[i].name, jp) {
+			out = append(out, genres[i].id)
+		}
+	}
+	return out
 }

@@ -7,6 +7,7 @@ import (
 	// "log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -234,6 +235,33 @@ func (ah *AssetHandler) DeleteAssetsMasterHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Asset master deleted successfully"})
+}
+
+func (ah *AssetHandler) AssetSearchHandler(c *gin.Context) {
+	q := strings.TrimSpace(c.Query("q"))
+	if q == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "q is required"})
+		return
+	}
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page <= 0 {
+		page = 1
+	}
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "20"))
+	if size <= 0 || size > 1000 {
+		size = 20
+	}
+
+	items, total, err := ah.Service.Search(c.Request.Context(), q, page, size)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to search"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"items":   items, // domain をそのまま返却（JSONタグは domain 側に付与）
+		"total":   total,
+		"message": "Asset masters fetched successfully",
+	})
 }
 
 // 将来的実装

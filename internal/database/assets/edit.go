@@ -10,7 +10,6 @@ import (
 	model "equipmentManager/internal/database/model/tables"
 )
 
-// 単発更新：Tx不要／タイムアウト付与
 func UpdateAsset(db *sql.DB, updated model.Asset, id int64) (bool, error) {
 	updated.ID = id
 
@@ -24,10 +23,10 @@ func UpdateAsset(db *sql.DB, updated model.Asset, id int64) (bool, error) {
 	defer func() { _ = tx.Rollback() }()
 
 	const query = `
-UPDATE assets
-SET quantity = ?, serial_number = ?, status_id = ?, purchase_date = ?,
-    owner = ?, location = ?, last_check_date = ?, last_checker = ?, notes = ?
-WHERE id = ?`
+	UPDATE assets
+	SET quantity = ?, serial_number = ?, status_id = ?, purchase_date = ?,
+		owner = ?, location = ?, last_check_date = ?, last_checker = ?, notes = ?
+	WHERE id = ?`
 
 	if _, err := tx.ExecContext(ctx, query,
 		updated.Quantity,
