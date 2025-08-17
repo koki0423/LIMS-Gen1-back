@@ -38,14 +38,15 @@ func main() {
 	r.Use(cors.New(cors.Config{
 		AllowOrigins: []string{
 			"http://localhost:3000",
-			"*", //開発検証用
+			// "*", //開発検証用
 		},
-		AllowMethods:     []string{"POST", "GET", "OPTIONS", "DELETE", "PUT"},
-		AllowHeaders:     []string{"Origin", "Content-Type"},
+		AllowHeaders:  []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders: []string{"Content-Length"},
+		AllowMethods:  []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowCredentials: true,
 	}))
 
-	// ハンドラーインスタンスを生成
+	// ハンドラーインスタンスを生成f
 	sh := handler.NewSystemHandler()
 	auh := handler.NewAuthHandler(assetsDB)
 	ath := handler.NewAttendanceHandler(attendanceDB)

@@ -14,7 +14,6 @@ func FetchAssetsAll(db *sql.DB) ([]model.Asset, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	// 列を明示（スキーマ変更に強くする）
 	const query = `
 SELECT id, asset_master_id, quantity, serial_number, status_id,
        purchase_date, owner, location, default_location,
@@ -34,7 +33,7 @@ ORDER BY id ASC;
 		var a model.Asset
 		if err := rows.Scan(
 			&a.ID,
-			&a.ItemMasterID,
+			&a.AssetMasterID,
 			&a.Quantity,
 			&a.SerialNumber,
 			&a.StatusID,
@@ -78,7 +77,7 @@ WHERE id = ?;
 	var a model.Asset
 	if err := row.Scan(
 		&a.ID,
-		&a.ItemMasterID,
+		&a.AssetMasterID,
 		&a.Quantity,
 		&a.SerialNumber,
 		&a.StatusID,
@@ -105,7 +104,6 @@ func FetchAllAssetsMaster(db *sql.DB) ([]model.AssetsMaster, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	// ※ ManagementNumber を含め、列順をテーブル定義に合わせて明示
 	const query = `
 SELECT id, management_number, name, management_category_id, genre_id, manufacturer, model_number
 FROM assets_masters
@@ -138,6 +136,7 @@ ORDER BY id ASC;
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+
 	return list, nil
 }
 

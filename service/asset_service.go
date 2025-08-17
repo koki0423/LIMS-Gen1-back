@@ -22,7 +22,7 @@ func NewAssetService(db *sql.DB) *AssetService {
 func ModelToDomainAsset(model model.Asset) domain.Asset {
 	return domain.Asset{
 		ID:              model.ID,
-		ItemMasterID:    model.ItemMasterID,
+		AssetMasterID:   model.AssetMasterID,
 		Quantity:        model.Quantity,
 		StatusID:        model.StatusID,
 		SerialNumber:    utils.NullStringToPtr(model.SerialNumber),
@@ -37,14 +37,15 @@ func ModelToDomainAsset(model model.Asset) domain.Asset {
 }
 
 func toDomainAssetMaster(m model.AssetsMaster) domain.AssetMaster {
-	var ret_value domain.AssetMaster
-	ret_value = domain.AssetMaster{
-		ID:           m.ID,
-		Name:         m.Name,
-		Manufacturer: utils.NullStringToPtr(m.Manufacturer),
-		ModelNumber:  utils.NullStringToPtr(m.ModelNumber),
+	return domain.AssetMaster{
+		ID:                   m.ID,
+		Name:                 m.Name,
+		ManagementNumber:     m.ManagementNumber,
+		ManagementCategoryID: m.ManagementCategoryID,
+		GenreID:              nullInt64ToPtr(m.GenreID),
+		Manufacturer:         nullStringToPtr(m.Manufacturer),
+		ModelNumber:          nullStringToPtr(m.ModelNumber),
 	}
-	return ret_value
 }
 
 // --- 変換処理 ---
@@ -74,7 +75,7 @@ func convertDomainToModel(domainAsset domain.CreateAssetRequest) (model.AssetsMa
 	}
 
 	asset := model.Asset{
-		ItemMasterID:  utils.PtrInt64ToInt64(domainAsset.AssetMasterID),
+		AssetMasterID: utils.PtrInt64ToInt64(domainAsset.AssetMasterID),
 		Quantity:      domainAsset.Quantity,
 		StatusID:      domainAsset.StatusID,
 		SerialNumber:  utils.StringToNullString(domainAsset.SerialNumber),
@@ -104,6 +105,21 @@ func convertToDomainEditAsset(editedAsset domain.EditAssetRequest) model.Asset {
 	}
 }
 
+func nullStringToPtr(v sql.NullString) *string {
+	if !v.Valid {
+		return nil
+	}
+	s := v.String
+	return &s
+}
+func nullInt64ToPtr(v sql.NullInt64) *int64 {
+	if !v.Valid {
+		return nil
+	}
+	x := v.Int64
+	return &x
+}
+
 var categoryNameMap = map[int]string{
 	1: "IND",
 	2: "OFS",
@@ -125,7 +141,8 @@ func (e *AssetService) CreateAssetWithMaster(newAsset domain.CreateAssetRequest)
 	model_master, model_asset := convertDomainToModel(newAsset)
 
 	// 管理番号は登録時に生成するので適当な文字列を設定
-	model_master.ManagementNumber = "abc"
+	model_master.ManagementNumber = fmt.Sprintf("%s-%s", "tmp", utils.GenerateUUID())
+	model_asset.StatusID = 1
 
 	switch model_master.ManagementCategoryID {
 	case 1:

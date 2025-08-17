@@ -5,6 +5,7 @@ import "time"
 type AssetMaster struct {
 	ID                   int64   `json:"id"`
 	Name                 string  `json:"name"`
+	ManagementNumber     string  `json:"management_number"` // 管理番号は登録時に自動生成されるため、通常は空
 	ManagementCategoryID int64   `json:"management_category_id"`
 	GenreID              *int64  `json:"genre_id,omitempty"`
 	Manufacturer         *string `json:"manufacturer,omitempty"`
@@ -13,10 +14,10 @@ type AssetMaster struct {
 
 // AssetはDBモデルのNULL許容フィールドをポインタで表現
 type Asset struct {
-	ID           int64 `json:"id"`
-	ItemMasterID int64 `json:"item_master_id"`
-	Quantity     int   `json:"quantity"`
-	StatusID     int64 `json:"status_id"`
+	ID            int64 `json:"id"`
+	AssetMasterID int64 `json:"asset_master_id"`
+	Quantity      int   `json:"quantity"`
+	StatusID      int64 `json:"status_id"`
 
 	SerialNumber    *string    `json:"serial_number,omitempty"`
 	PurchaseDate    *time.Time `json:"purchase_date,omitempty"`
@@ -40,7 +41,7 @@ type CreateAssetRequest struct {
 
 	// --- 個別資産情報 ---
 	Quantity        int     `json:"quantity" binding:"required"`
-	StatusID        int64   `json:"status_id" binding:"required"`
+	StatusID        int64   `json:"status_id"`
 	SerialNumber    *string `json:"serial_number"`
 	PurchaseDate    *string `json:"purchase_date"` //  (形式: "YYYY-MM-DD")
 	Owner           *string `json:"owner"`

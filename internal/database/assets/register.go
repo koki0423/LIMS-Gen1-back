@@ -25,6 +25,7 @@ func CrateAssetIndivisual(db *sql.DB, master model.AssetsMaster, asset model.Ass
 	defer func() { _ = tx.Rollback() }()
 
 	// 1) マスタ挿入（管理番号は後で付与）
+	// log.Println("(個別管理)マスタ登録開始 管理番号:", master.ManagementNumber)
 	masterID, err := createMaster(ctx, tx, master)
 	if err != nil {
 		log.Println("(個別管理)マスタ登録失敗:", err)
@@ -39,7 +40,7 @@ func CrateAssetIndivisual(db *sql.DB, master model.AssetsMaster, asset model.Ass
 	}
 
 	// 3) 資産挿入
-	asset.ItemMasterID = masterID
+	asset.AssetMasterID = masterID
 	if err := createAsset(ctx, tx, asset); err != nil {
 		log.Println("(個別管理)資産登録失敗:", err)
 		return "", err
@@ -76,7 +77,7 @@ func CreateAssetCollective(db *sql.DB, master model.AssetsMaster, asset model.As
 		return "", err
 	}
 
-	asset.ItemMasterID = masterID
+	asset.AssetMasterID = masterID
 	if err := createAsset(ctx, tx, asset); err != nil {
 		log.Println("(全体管理)資産登録失敗:", err)
 		return "", err
@@ -123,7 +124,7 @@ INSERT INTO assets (asset_master_id, quantity, serial_number, status_id, purchas
                     location, default_location, last_check_date, last_checker, notes)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	_, err := tx.ExecContext(ctx, q,
-		asset.ItemMasterID,
+		asset.AssetMasterID,
 		asset.Quantity,
 		asset.SerialNumber,
 		asset.StatusID,

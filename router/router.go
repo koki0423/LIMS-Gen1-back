@@ -83,6 +83,7 @@ func InitRouter(r *gin.Engine, sh *handler.SystemHandler, ath *handler.Attendanc
 			attendance.POST("", ath.PostAttendanceHandler)            // POST /attendance
 			attendance.GET("/all", ath.GetAttendanceAllHandler)       // GET /attendance/all
 			attendance.GET("/:id", ath.GetAttendanceByIdHandler)     // GET /attendance/:id
+			attendance.GET("/api/v1/attendance/byIdWithDate", ath.GetByIdWithDate)
 			attendance.GET("/today", ath.GetAttendanceTodayHandler) // GET /attendance/today}
 		}
 

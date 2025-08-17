@@ -100,3 +100,78 @@ func (r *Repository) FindTodayJST(ctx context.Context, studentNumber string) ([]
 	}
 	return list, nil
 }
+
+func (r *Repository) QueryByStudentAndRange(
+	ctx context.Context,
+	studentID string,
+	startUTC, endUTC time.Time,
+	orderBy string,
+	limit, offset int,
+) ([]attendance.AttendanceItem, int64, error) {
+
+	// 件数
+	var total int64
+	countSQL := `
+	  SELECT COUNT(*)
+	    FROM attendance
+	   WHERE student_id = ?
+	     AND timestamp >= ?
+	     AND timestamp <  ?
+	`
+	if err := r.DB.QueryRowContext(ctx, countSQL, studentID, startUTC, endUTC).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	// 本体
+	q := `
+	  SELECT id, student_id, name, timestamp, status, subject, notes
+	    FROM attendance
+	   WHERE student_id = ?
+	     AND timestamp >= ?
+	     AND timestamp <  ?
+	   ORDER BY ` + orderBy + `
+	   LIMIT ? OFFSET ?
+	`
+
+	rows, err := r.DB.QueryContext(ctx, q, studentID, startUTC, endUTC, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	items := make([]attendance.AttendanceItem, 0, limit)
+	for rows.Next() {
+		var (
+			id        int64
+			sid       string
+			nameNS    sql.NullString
+			ts        time.Time
+			status    string
+			subjectNS sql.NullString
+			notesNS   sql.NullString
+		)
+		if err := rows.Scan(&id, &sid, &nameNS, &ts, &status, &subjectNS, &notesNS); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, attendance.AttendanceItem{
+			ID:        id,
+			StudentID: sid,
+			Name:      nsPtr(nameNS),
+			Timestamp: ts.UTC(), // 返却はUTC（FEでローカル表示推奨）
+			Status:    status,
+			Subject:   nsPtr(subjectNS),
+			Notes:     nsPtr(notesNS),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	return items, total, nil
+}
+
+func nsPtr(v sql.NullString) *string {
+	if !v.Valid { return nil }
+	s := v.String
+	return &s
+}

@@ -7,7 +7,6 @@ import (
 
 // curl -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: application/json" -d '{"email": "test@example.com", "password": "password123"}'
 
-// initAuthRouter は認証関連のエンドポイント（/login, /registerなど）を設定します
 func initAuthRouter(apiRouter *gin.RouterGroup,ah *handler.AuthHandler) {
 	// /api/v1/auth グループ
 	auth := apiRouter.Group("/auth")
@@ -17,7 +16,5 @@ func initAuthRouter(apiRouter *gin.RouterGroup,ah *handler.AuthHandler) {
 
 		// POST /api/v1/auth/register
 		//auth.POST("/register", handler.RegisterHandler)
-
-
 	}
 }
