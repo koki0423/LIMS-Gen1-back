@@ -175,8 +175,6 @@ func createPrintOption(
 	if printLog != "" {
 		parts = append(parts, "/L "+printLog)
 	}
-
-	// Python版同様にカンマで連結
 	return strings.Join(parts, ",")
 }
 

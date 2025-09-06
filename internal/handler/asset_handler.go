@@ -110,6 +110,7 @@ func (ah *AssetHandler) GetAssetsByAssetIdHandler(c *gin.Context) {
 	})
 }
 
+
 // @Summary      資産情報の更新
 // @Description  指定されたIDの個別資産情報を更新します。
 // @Tags         Asset

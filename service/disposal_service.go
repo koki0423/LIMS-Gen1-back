@@ -51,6 +51,15 @@ func (ds *DisposalService) GetDisposalAll() ([]domain.DisposalResponse, error) {
 	return domainDisposals, nil
 }
 
+// GET /assets/mgmt/:id
+func (e *AssetService) GetAssetByManagementId(mgmtId string) (domain.Asset, error) {
+	dbAsset, err := disposal.FetchAssetsByManagementID(e.DB, mgmtId)
+	if err != nil {
+		return domain.Asset{}, err
+	}
+	return ModelToDomainAsset(*dbAsset), nil
+}
+
 func (ds *DisposalService) GetDisposalByID(id int64) (domain.DisposalResponse, error) {
 	disposalData, err := disposal.FetchDisposalByID(ds.DB, id)
 	if err != nil {

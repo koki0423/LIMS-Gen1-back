@@ -15,11 +15,11 @@ func FetchAssetsAll(db *sql.DB) ([]model.Asset, error) {
 	defer cancel()
 
 	const query = `
-SELECT id, asset_master_id, quantity, serial_number, status_id,
-       purchase_date, owner, location, default_location,
-       last_check_date, last_checker, notes
-FROM assets
-ORDER BY id ASC;
+	SELECT id, asset_master_id, quantity, serial_number, status_id,
+		purchase_date, owner, location, default_location,
+		last_check_date, last_checker, notes
+	FROM assets
+	ORDER BY id ASC;
 `
 	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
@@ -66,12 +66,12 @@ func FetchAssetsByID(db *sql.DB, assetID int64) (*model.Asset, error) {
 	defer cancel()
 
 	const query = `
-SELECT id, asset_master_id, quantity, serial_number, status_id,
-       purchase_date, owner, location, default_location,
-       last_check_date, last_checker, notes
-FROM assets
-WHERE id = ?;
-`
+	SELECT id, asset_master_id, quantity, serial_number, status_id,
+		purchase_date, owner, location, default_location,
+		last_check_date, last_checker, notes
+	FROM assets
+	WHERE id = ?;
+	`
 	row := db.QueryRowContext(ctx, query, assetID)
 
 	var a model.Asset
