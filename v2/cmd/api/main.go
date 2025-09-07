@@ -12,9 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 
-	"IRIS-backend/internal/assets"
-	"IRIS-backend/internal/disposals"
-	"IRIS-backend/internal/lends"
+	"IRIS-backend/internal/asset_mgmt/assets"
+	"IRIS-backend/internal/asset_mgmt/disposals"
+	"IRIS-backend/internal/asset_mgmt/lends"
+	"IRIS-backend/internal/attendance"
 )
 
 func main() {
@@ -44,12 +45,18 @@ func main() {
 	assets.RegisterRoutes(r, assets.NewService(db))
 	lends.RegisterRoutes(r, lends.NewService(db))
 	disposals.RegisterRoutes(r, disposals.NewService(db))
-	
+	attendance.RegisterRoutes(r, attendance.NewService(db))
+
 	srv := &http.Server{
 		Addr:              ":8080",
 		Handler:           r,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+
+	// デバッグ用
+	// for _, ri := range r.Routes() {
+	// 	log.Printf("ROUTE: %s %s -> %s", ri.Method, ri.Path, ri.Handler)
+	// }
 
 	// 起動
 	go func() {
