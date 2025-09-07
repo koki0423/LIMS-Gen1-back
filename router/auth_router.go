@@ -1,3 +1,4 @@
+/*将来的に使うかもしれない認証必須ページへのルーター*/
 package router
 
 import (
