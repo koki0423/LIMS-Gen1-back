@@ -8,7 +8,7 @@ import (
 )
 
 func RegisterRoutes(r *gin.Engine, svc *Service) {
-	g := r.Group("/")
+	g := r.Group("/api/v2")
 	{
 		g.POST("/attendances", handleCreateAttendance(svc))
 		g.GET("/attendances", handleListAttendances(svc))

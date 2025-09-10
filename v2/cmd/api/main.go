@@ -9,12 +9,14 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 
 	"IRIS-backend/internal/asset_mgmt/assets"
 	"IRIS-backend/internal/asset_mgmt/disposals"
 	"IRIS-backend/internal/asset_mgmt/lends"
+	"IRIS-backend/internal/asset_mgmt/printLabels"
 	"IRIS-backend/internal/attendance"
 )
 
@@ -38,6 +40,18 @@ func main() {
 	}
 
 	r := gin.Default()
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins: []string{
+			"http://localhost:3000",
+			// "*", //開発検証用
+		},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Idempotency-Key"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowCredentials: true,
+	}))
+
 	// ヘルス
 	r.GET("/healthz", func(c *gin.Context) { c.String(http.StatusOK, "ok") })
 
@@ -46,6 +60,7 @@ func main() {
 	lends.RegisterRoutes(r, lends.NewService(db))
 	disposals.RegisterRoutes(r, disposals.NewService(db))
 	attendance.RegisterRoutes(r, attendance.NewService(db))
+	printLabels.RegisterRoutes(r, printLabels.NewService())
 
 	srv := &http.Server{
 		Addr:              ":8080",
