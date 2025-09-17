@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 )
 
 type Store struct {
@@ -99,6 +100,22 @@ func (s *Store) UpdateAssetsStatus(ctx context.Context, tx *sql.Tx, masterID uin
 
 		return sql.ErrNoRows // NotFound
 
+	}
+	return nil
+}
+
+func (s *Store) UpdateAssetOnLend(ctx context.Context, tx *sql.Tx, l *Lend, assetId uint64) error {
+	const q = `
+		UPDATE assets
+		SET location = ?, last_checked_at = ?
+		WHERE asset_id = ?`
+	res, err := tx.ExecContext(ctx, q, l.BorrowerID, time.Now(), assetId)
+	if err != nil {
+		return err
+	}
+	aff, _ := res.RowsAffected()
+	if aff != 1 {
+		return ErrInternal("failed to update assets.location")
 	}
 	return nil
 }

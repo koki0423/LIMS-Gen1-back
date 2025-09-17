@@ -157,6 +157,11 @@ func (s *Service) CreateLend(ctx context.Context, managementNumber string, in Cr
 			// return err
 		}
 
+		// update location
+		if err := s.store.UpdateAssetOnLend(ctx, tx, l, assetID); err != nil {
+			log.Printf("failed to update assets.location: %v", err)
+		}
+
 		return nil
 	})
 	return resp, err
@@ -351,6 +356,12 @@ func (s *Service) CreateReturn(ctx context.Context, lendULID string, in CreateRe
 		if err := s.store.UpdateLendReturnedStatus(ctx, tx, l.LendULID); err != nil {
 			log.Printf("failed to update lends.returned_status: %v", err)
 			//return err
+		}
+
+		// update location
+		l.BorrowerID = "" // 返却したのでlocationを空にする
+		if err := s.store.UpdateAssetOnLend(ctx, tx, l, assetID); err != nil {
+			log.Printf("failed to update assets.location: %v", err)
 		}
 
 		return nil
