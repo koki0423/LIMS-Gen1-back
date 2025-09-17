@@ -78,6 +78,31 @@ func (s *Store) InsertLend(ctx context.Context, tx *sql.Tx, m *Lend) (uint64, er
 	return uint64(id), nil
 }
 
+func (s *Store) UpdateAssetsStatus(ctx context.Context, tx *sql.Tx, masterID uint64, statusID int) error {
+	const q = `
+		UPDATE assets
+		SET status_id = ?
+		WHERE asset_master_id = ?
+		AND status_id <> ?`
+
+	res, err := tx.ExecContext(ctx, q, statusID, masterID, statusID)
+	if err != nil {
+		return err
+	}
+	aff, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	// 要件に合わせてここは選択
+	if aff == 0 {
+
+		return sql.ErrNoRows // NotFound
+
+	}
+	return nil
+}
+
 func (s *Store) GetLendByULID(ctx context.Context, ulid string) (*Lend, error) {
 	const q = `
 	SELECT lend_id, lend_ulid, asset_master_id, quantity, borrower_id, due_on, lent_by_id, lent_at, note
@@ -116,7 +141,7 @@ func (s *Store) ListLends(ctx context.Context, f LendFilter, p Page) ([]lendRow,
 	sb := strings.Builder{}
 	sb.WriteString(`
 	SELECT
-	l.lend_id, l.lend_ulid, l.asset_master_id, l.quantity, l.borrower_id, l.due_on, l.lent_by_id, l.lent_at, l.note,
+	l.lend_id, l.lend_ulid, l.asset_master_id, l.quantity, l.borrower_id, l.due_on, l.lent_by_id, l.lent_at, l.note, l.returned,
 	m.management_number,
 	COALESCE(r.sum_qty,0) AS returned_sum
 	FROM lends l
@@ -149,7 +174,10 @@ func (s *Store) ListLends(ctx context.Context, f LendFilter, p Page) ([]lendRow,
 		// outstanding = l.quantity > returned_sum
 		sb.WriteString(` AND COALESCE(r.sum_qty,0) < l.quantity`)
 	}
-
+	if f.Returned != nil {
+		sb.WriteString(` AND l.returned = ?`)
+		args = append(args, *f.Returned)
+	}
 	order := "DESC"
 	if strings.ToLower(p.Order) == "asc" {
 		order = "ASC"
@@ -177,7 +205,7 @@ func (s *Store) ListLends(ctx context.Context, f LendFilter, p Page) ([]lendRow,
 		var r lendRow
 		if err := rows.Scan(
 			&r.Lend.LendID, &r.Lend.LendULID, &r.Lend.AssetMasterID, &r.Lend.Quantity, &r.Lend.BorrowerID,
-			&r.Lend.DueOn, &r.Lend.LentByID, &r.Lend.LentAt, &r.Lend.Note,
+			&r.Lend.DueOn, &r.Lend.LentByID, &r.Lend.LentAt, &r.Lend.Note, &r.Lend.Returned,
 			&r.ManagementNumber, &r.ReturnedSum,
 		); err != nil {
 			return nil, 0, err
@@ -211,6 +239,10 @@ func (s *Store) ListLends(ctx context.Context, f LendFilter, p Page) ([]lendRow,
 	if f.OnlyOutstanding {
 		cb.WriteString(` AND COALESCE(r.sum_qty,0) < l.quantity`)
 	}
+	if f.Returned != nil {
+		cb.WriteString(` AND l.returned = ?`)
+		argsCnt = append(argsCnt, *f.Returned)
+	}
 	var total int64
 	if err := s.db.QueryRowContext(ctx, cb.String(), argsCnt...).Scan(&total); err != nil {
 		return nil, 0, err
@@ -235,6 +267,13 @@ func (s *Store) InsertReturn(ctx context.Context, tx *sql.Tx, m *Return) (uint64
 	}
 	id, _ := res.LastInsertId()
 	return uint64(id), nil
+}
+
+func (s *Store) UpdateLendReturnedStatus(ctx context.Context, tx *sql.Tx, lendULID string) error {
+	const q = `
+		UPDATE lends SET returned = ? WHERE lend_ulid = ?`
+	_, err := tx.ExecContext(ctx, q, true, lendULID)
+	return err
 }
 
 func (s *Store) ListReturnsByLend(ctx context.Context, lendID uint64, p Page) ([]Return, int64, error) {

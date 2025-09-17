@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"log"
 
 	ulid "github.com/oklog/ulid/v2"
 )
@@ -82,22 +83,34 @@ func (s *Service) CreateDisposal(ctx context.Context, managementNumber string, i
 	duid := s.id.NewULID(now)
 
 	var resp DisposalResponse
-
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
 		// master解決
 		masterID, err := s.store.ResolveMasterID(ctx, managementNumber)
 		if err != nil { return err }
+		// log.Printf("Resolved masterID: %d", masterID)
 
 		// 在庫ロック & チェック
-		assetID, qty, err := s.store.LockAssetRow(ctx, tx, masterID)
+		assetID, qty, err := s.store.LockAssetRow(ctx, tx, masterID) // SELECT ... FOR UPDATE
 		if err != nil { return err }
 		if int(qty) - int(in.Quantity) < 0 {
 			return ErrConflict("insufficient stock")
 		}
+		// log.Printf("Locked assetID: %d with quantity: %d", assetID, qty)
 
 		// 在庫減算
 		if err := s.store.UpdateAssetQuantity(ctx, tx, assetID, -int(in.Quantity)); err != nil {
 			return err
+		}
+		// log.Printf("Updated assetID: %d quantity by %d", assetID, -int(in.Quantity))
+
+		// 減算後が0ならだけステータス変更
+		newQty := int(qty) - int(in.Quantity)
+		if newQty == 0 {
+			const StatusZeroStock = 5
+			if err := s.store.UpdateAssetStatus(ctx, tx, assetID, StatusZeroStock); err != nil {
+				log.Printf("Failed to update asset status: %v", err)
+				return err
+			}
 		}
 
 		// 廃棄挿入
@@ -109,11 +122,7 @@ func (s *Service) CreateDisposal(ctx context.Context, managementNumber string, i
 			ProcessedByID:    toNullString(in.ProcessedByID),
 		}
 		if _, err := s.store.InsertDisposal(ctx, tx, m); err != nil {
-			return err
-		}
-
-		// ステータス変更
-		if err := s.store.UpdateAssetStatus(ctx, tx, assetID,5); err != nil {
+			log.Printf("Failed to insert disposal record: %v", err)
 			return err
 		}
 
@@ -129,6 +138,7 @@ func (s *Service) CreateDisposal(ctx context.Context, managementNumber string, i
 	})
 	return resp, err
 }
+
 
 func (s *Service) GetDisposalByULID(ctx context.Context, ul string) (DisposalResponse, error) {
 	m, err := s.store.GetByULID(ctx, ul)

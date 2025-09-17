@@ -56,12 +56,20 @@ func (h *Handler) GetAssetMaster(c *gin.Context) {
 }
 
 func (h *Handler) ListAssetMasters(c *gin.Context) {
+	var q AssetSearchQuery
+	if v := c.Query("genre"); v != "" {
+		id, err := strconv.Atoi(v)
+		if err == nil {
+			u := uint(id)
+			q.GenreID = &u
+		}
+	}
 	p := Page{
 		Limit:  atoiDef(c.Query("limit"), 50),
 		Offset: atoiDef(c.Query("offset"), 0),
 		Order:  strings.ToLower(c.DefaultQuery("order", "desc")),
 	}
-	items, total, err := h.svc.ListAssetMasters(c.Request.Context(), p)
+	items, total, err := h.svc.ListAssetMasters(c.Request.Context(), p, q)
 	if err != nil {
 		c.JSON(toHTTPStatus(err), apiErrFrom(err))
 		return
@@ -105,7 +113,7 @@ func (h *Handler) CreateAsset(c *gin.Context) {
 func (h *Handler) GetAsset(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("asset_id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, apiErr(CodeInvalidArgument, "invalid asset_id"))
+		c.JSON(http.StatusBadRequest, apiErr(CodeInvalidArgument, "asset_id must be a number"))
 		return
 	}
 	res, err := h.svc.GetAsset(c.Request.Context(), id)
@@ -120,6 +128,11 @@ func (h *Handler) ListAssets(c *gin.Context) {
 	var q AssetSearchQuery
 	if v := c.Query("management_number"); v != "" {
 		q.ManagementNumber = &v
+	}
+	if v:= c.Query("asmi"); v != "" {
+		if n, err := strconv.ParseUint(v, 10, 64); err == nil {
+			q.AssetMasterID = &n
+		}
 	}
 	if v := c.Query("status_id"); v != "" {
 		if n, err := strconv.ParseUint(v, 10, 64); err == nil {

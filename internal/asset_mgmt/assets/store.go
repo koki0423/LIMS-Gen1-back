@@ -21,9 +21,13 @@ func (s *Store) InsertMasterTmp(ctx context.Context, in CreateAssetMasterRequest
 	(management_number, name, management_category_id, genre_id, manufacturer, model, created_at)
 	VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
 	res, err := s.db.ExecContext(ctx, q, tmpMng, in.Name, in.ManagementCategoryID, in.GenreID, in.Manufacturer, in.Model)
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	id, err := res.LastInsertId()
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	return uint64(id), nil
 }
 
@@ -36,7 +40,9 @@ func (s *Store) UpdateMngToFinal(ctx context.Context, id uint64, tmpMng string, 
 	WHERE m.asset_master_id = ? AND m.management_number = ?`, pad)
 
 	res, err := s.db.ExecContext(ctx, q, id, tmpMng)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	if aff, _ := res.RowsAffected(); aff != 1 {
 		return ErrConflict("no row updated")
 	}
@@ -57,7 +63,6 @@ func (s *Store) GetMasterByID(ctx context.Context, id uint64) (*AssetMasterRespo
 	}
 	return &out, nil
 }
-
 
 func (s *Store) GetMasterByMng(ctx context.Context, mng string) (*AssetMasterResponse, error) {
 	const q = `
@@ -126,28 +131,53 @@ func (s *Store) UpdateMasterByMng(ctx context.Context, mng string, in UpdateAsse
 	return s.GetMasterByMng(ctx, mng)
 }
 
-func (s *Store) ListMasters(ctx context.Context, p Page) ([]AssetMasterResponse, int64, error) {
+func (s *Store) ListMasters(ctx context.Context, p Page, q AssetSearchQuery) ([]AssetMasterResponse, int64, error) {
+	// --- 1. 動的クエリ構築のための準備 ---
+	var sb strings.Builder
+	args := []any{}
+
+	// --- 2. SELECT句の構築 ---
+	sb.WriteString(`
+	SELECT asset_master_id, management_number, name, management_category_id, genre_id, manufacturer, model, created_at
+	FROM assets_master
+	WHERE 1=1
+	`)
+
+	// --- 3. WHERE句（フィルタ条件）の動的な追加 ---
+	if q.GenreID != nil && *q.GenreID != 0 {
+		sb.WriteString(" AND genre_id = ?")
+		args = append(args, *q.GenreID)
+	}
+	// 他のフィルタ条件もここに追加できます
+	// if q.Name != nil { ... }
+
+	// --- 4. ORDER BY句の安全な構築 ---
 	order := "DESC"
 	if strings.ToLower(p.Order) == "asc" {
 		order = "ASC"
 	}
+	// Sprintfを使わず、変数を直接埋め込むことでSQLインジェクションを防ぐ
+	sb.WriteString(" ORDER BY created_at " + order)
+
+	// --- 5. LIMIT / OFFSET句の構築 ---
 	if p.Limit <= 0 {
 		p.Limit = 50
 	}
 	if p.Offset < 0 {
 		p.Offset = 0
 	}
+	sb.WriteString(" LIMIT ? OFFSET ?")
+	args = append(args, p.Limit, p.Offset)
 
-	q := fmt.Sprintf(`
-	SELECT asset_master_id, management_number, name, management_category_id, genre_id, manufacturer, model, created_at
-	FROM assets_master ORDER BY created_at %s LIMIT ? OFFSET ?`, order)
-
-	rows, err := s.db.QueryContext(ctx, q, p.Limit, p.Offset)
+	// --- 6. クエリの実行 ---
+	query := sb.String()
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
 
+	// --- 7. 結果のスキャン (変更なし) ---
 	list := []AssetMasterResponse{}
 	for rows.Next() {
 		var r AssetMasterResponse
@@ -163,10 +193,22 @@ func (s *Store) ListMasters(ctx context.Context, p Page) ([]AssetMasterResponse,
 		return nil, 0, err
 	}
 
+	// --- 8. 総件数取得クエリの構築（フィルタを反映） ---
+	var cb strings.Builder
+	countArgs := []any{}
+	cb.WriteString("SELECT COUNT(*) FROM assets_master WHERE 1=1")
+
+	if q.GenreID != nil && *q.GenreID != 0 {
+		cb.WriteString(" AND genre_id = ?")
+		countArgs = append(countArgs, *q.GenreID)
+	}
+	// 他のフィルタ条件もここに追加...
+
 	var total int64
-	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM assets_master`).Scan(&total); err != nil {
+	if err := s.db.QueryRowContext(ctx, cb.String(), countArgs...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
+
 	return list, total, nil
 }
 
@@ -214,7 +256,7 @@ func (s *Store) GetAssetByID(ctx context.Context, id uint64) (*AssetResponse, er
 		a.owner, a.default_location, a.location, a.last_checked_at, a.last_checked_by, a.notes
 	FROM assets a
 	JOIN assets_master m ON m.asset_master_id = a.asset_master_id
-	WHERE a.asset_id = ?`
+	WHERE a.asset_master_id = ?`
 	var r AssetResponse
 	var serial, loc, lcb, notes sql.NullString
 	var lct sql.NullTime
@@ -322,9 +364,9 @@ func (s *Store) ListAssets(ctx context.Context, q AssetSearchQuery, p Page) ([]A
 
 	// ベース句（SELECT と COUNT で共通）
 	baseFrom := `
-FROM assets a
-JOIN assets_master m ON m.asset_master_id = a.asset_master_id
-`
+	FROM assets a
+	JOIN assets_master m ON m.asset_master_id = a.asset_master_id
+	`
 
 	// WHERE 句と args を共通で作る
 	where := "WHERE 1=1"
@@ -332,6 +374,10 @@ JOIN assets_master m ON m.asset_master_id = a.asset_master_id
 	if q.ManagementNumber != nil {
 		where += " AND m.management_number = ?"
 		args = append(args, *q.ManagementNumber)
+	}
+	if q.AssetMasterID != nil {
+		where += " AND a.asset_master_id = ?"
+		args = append(args, *q.AssetMasterID)
 	}
 	if q.StatusID != nil {
 		where += " AND a.status_id = ?"

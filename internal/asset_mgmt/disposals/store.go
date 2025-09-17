@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
+	"errors"
 )
 
 type Store struct{ db *sql.DB }
@@ -49,16 +51,45 @@ func (s *Store) UpdateAssetQuantity(ctx context.Context, tx *sql.Tx, assetID uin
 	return nil
 }
 
-func (s *Store) UpdateAssetStatus(ctx context.Context, tx *sql.Tx, assetID uint64, statusCode int) error {
-	const q = `UPDATE assets SET status_id = ? WHERE asset_id = ?`
-	res, err := tx.ExecContext(ctx, q, statusCode, assetID)
+func (s *Store) UpdateAssetStatus(ctx context.Context, tx *sql.Tx, assetID uint64, statusID int) error {
+	const q = `
+		UPDATE assets
+		SET status_id = ?
+		WHERE asset_id = ?
+		AND quantity = 0`
+	res, err := tx.ExecContext(ctx, q, statusID, assetID)
+	if err != nil {
+		log.Printf("Error executing UpdateAssetStatus: %v", err)
+		return err
+	}
+	aff, err := res.RowsAffected()
+	if err != nil {
+		log.Printf("Error getting affected rows: %v", err)
+		return err
+	}
+	if aff == 1 {
+		return nil // 変更あり
+	}
+
+	// 0件の理由を切り分け（冪等成功 or 前提崩れ）
+	var curQty, curStatus int
+	err = tx.QueryRowContext(ctx,
+		`SELECT quantity, status_id FROM assets WHERE asset_id = ? FOR UPDATE`,
+		assetID,
+	).Scan(&curQty, &curStatus)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound("asset")
+	}
 	if err != nil {
 		return err
 	}
-	if aff, _ := res.RowsAffected(); aff != 1 {
-		return ErrInternal("failed to update assets.status")
+	if curQty != 0 {
+		return fmt.Errorf("precondition failed: quantity must be 0 (got %d)", curQty)
 	}
-	return nil
+	if curStatus == statusID {
+		return nil // 変更不要（冪等成功）
+	}
+	return ErrInternal("failed to update assets.status")
 }
 
 // --- disposals ---

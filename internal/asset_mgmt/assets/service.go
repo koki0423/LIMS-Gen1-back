@@ -115,8 +115,8 @@ func (s *Service) GetAssetMaster(ctx context.Context, managementNumber string) (
 	return *out, nil
 }
 
-func (s *Service) ListAssetMasters(ctx context.Context, p Page) ([]AssetMasterResponse, int64, error) {
-	items, total, err := s.store.ListMasters(ctx, p)
+func (s *Service) ListAssetMasters(ctx context.Context, p Page, q AssetSearchQuery) ([]AssetMasterResponse, int64, error) {
+	items, total, err := s.store.ListMasters(ctx, p, q)
 	if err != nil {
 		return nil, 0, err
 	}

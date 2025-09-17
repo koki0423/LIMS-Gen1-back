@@ -86,9 +86,11 @@ type Page struct {
 
 type AssetSearchQuery struct {
 	ManagementNumber *string
+	AssetMasterID    *uint64
 	StatusID         *uint
 	Owner            *string
 	Location         *string
 	PurchasedFrom    *time.Time
 	PurchasedTo      *time.Time
+	GenreID          *uint
 }

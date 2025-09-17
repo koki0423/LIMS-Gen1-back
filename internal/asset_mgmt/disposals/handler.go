@@ -1,6 +1,7 @@
 package disposals
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -26,6 +27,10 @@ func (h *Handler) CreateDisposal(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, errorBody(CodeInvalidArgument, "invalid json"))
 		return
 	}
+
+	log.Printf("CreateDisposal called with management_number: %s, quantity: %d,  reason: %+v, processed_by_id: %+v",
+		mng, req.Quantity, req.Reason, req.ProcessedByID)
+
 	res, err := h.svc.CreateDisposal(c.Request.Context(), mng, req)
 	if err != nil {
 		c.JSON(ToHTTPStatus(err), errorFromErr(err))

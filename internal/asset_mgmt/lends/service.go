@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -17,11 +18,11 @@ import (
 type Code string
 
 const (
-	CodeInvalidArgument   Code = "INVALID_ARGUMENT"
-	CodeNotFound          Code = "NOT_FOUND"
-	CodeConflict          Code = "CONFLICT" // 在庫不足・返却過多など
-	CodeUnprocessable     Code = "UNPROCESSABLE_ENTITY"
-	CodeInternal          Code = "INTERNAL"
+	CodeInvalidArgument Code = "INVALID_ARGUMENT"
+	CodeNotFound        Code = "NOT_FOUND"
+	CodeConflict        Code = "CONFLICT" // 在庫不足・返却過多など
+	CodeUnprocessable   Code = "UNPROCESSABLE_ENTITY"
+	CodeInternal        Code = "INTERNAL"
 )
 
 type APIError struct {
@@ -29,20 +30,22 @@ type APIError struct {
 	Message string
 }
 
-func (e *APIError) Error() string { return fmt.Sprintf("%s: %s", e.Code, e.Message) }
-func ErrInvalid(msg string) *APIError   { return &APIError{Code: CodeInvalidArgument, Message: msg} }
-func ErrNotFound(msg string) *APIError  { return &APIError{Code: CodeNotFound, Message: msg} }
-func ErrConflict(msg string) *APIError  { return &APIError{Code: CodeConflict, Message: msg} }
-func ErrInternal(msg string) *APIError  { return &APIError{Code: CodeInternal, Message: msg} }
+func (e *APIError) Error() string      { return fmt.Sprintf("%s: %s", e.Code, e.Message) }
+func ErrInvalid(msg string) *APIError  { return &APIError{Code: CodeInvalidArgument, Message: msg} }
+func ErrNotFound(msg string) *APIError { return &APIError{Code: CodeNotFound, Message: msg} }
+func ErrConflict(msg string) *APIError { return &APIError{Code: CodeConflict, Message: msg} }
+func ErrInternal(msg string) *APIError { return &APIError{Code: CodeInternal, Message: msg} }
 
 // -------------- Clock & ID --------------
 
 type Clock interface{ Now() time.Time }
 type realClock struct{}
+
 func (realClock) Now() time.Time { return time.Now().UTC() }
 
 type IDGen interface{ NewULID(t time.Time) string }
 type ulidGen struct{}
+
 func (ulidGen) NewULID(t time.Time) string {
 	entropy := ulid.Monotonic(rand.Reader, 0)
 	return ulid.MustNew(ulid.Timestamp(t), entropy).String()
@@ -69,7 +72,9 @@ func NewService(db *sql.DB) *Service {
 // Tx helper
 func (s *Service) withTx(ctx context.Context, fn func(*sql.Tx) error) error {
 	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{})
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	if err := fn(tx); err != nil {
 		_ = tx.Rollback()
 		return err
@@ -94,14 +99,18 @@ func (s *Service) CreateLend(ctx context.Context, managementNumber string, in Cr
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
 		// Resolve master
 		masterID, err := s.store.ResolveMasterID(ctx, managementNumber)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		// Lock asset row
 		assetID, qty, err := s.store.LockAssetRow(ctx, tx, masterID)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		// Stock check
-		if int(qty) - int(in.Quantity) < 0 {
+		if int(qty)-int(in.Quantity) < 0 {
 			return ErrConflict("insufficient stock")
 		}
 		// Decrement stock
@@ -111,17 +120,19 @@ func (s *Service) CreateLend(ctx context.Context, managementNumber string, in Cr
 
 		// Insert lend
 		l := &Lend{
-			LendULID:      luid,
-			AssetMasterID: masterID,
+			LendULID:         luid,
+			AssetMasterID:    masterID,
 			ManagementNumber: managementNumber,
-			Quantity:      in.Quantity,
-			BorrowerID:    in.BorrowerID,
-			DueOn:         toNullString(in.DueOn),
-			LentByID:      toNullString(in.LentByID),
-			Note:          toNullString(in.Note),
+			Quantity:         in.Quantity,
+			BorrowerID:       in.BorrowerID,
+			DueOn:            toNullString(in.DueOn),
+			LentByID:         toNullString(in.LentByID),
+			Note:             toNullString(in.Note),
 		}
 		_, err = s.store.InsertLend(ctx, tx, l)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		resp = LendResponse{
 			LendULID:            luid,
@@ -136,6 +147,16 @@ func (s *Service) CreateLend(ctx context.Context, managementNumber string, in Cr
 			OutstandingQuantity: in.Quantity,
 			Note:                in.Note,
 		}
+
+		// 複数在庫がある場合、１つの管理番号に対して複数の状態が存在することになるのでここでUPDATEかけると
+		// sql: no rows in result setが返ってくるので，更新操作するけどエラーは無視する
+		// updateAssets status
+		statusID := 4 // 貸出中
+		if err := s.store.UpdateAssetsStatus(ctx, tx, masterID, statusID); err != nil {
+			log.Printf("failed to update assets.status: %v", err)
+			// return err
+		}
+
 		return nil
 	})
 	return resp, err
@@ -143,11 +164,15 @@ func (s *Service) CreateLend(ctx context.Context, managementNumber string, in Cr
 
 func (s *Service) GetLendByULID(ctx context.Context, lendULID string) (LendResponse, error) {
 	m, err := s.store.GetLendByULID(ctx, lendULID)
-	if err != nil { return LendResponse{}, err }
+	if err != nil {
+		return LendResponse{}, err
+	}
 
 	// sum returns
 	sum, err := s.store.SumReturned(ctx, m.LendID)
-	if err != nil { return LendResponse{}, err }
+	if err != nil {
+		return LendResponse{}, err
+	}
 	outstanding := uint(0)
 	if m.Quantity > sum {
 		outstanding = m.Quantity - sum
@@ -156,7 +181,11 @@ func (s *Service) GetLendByULID(ctx context.Context, lendULID string) (LendRespo
 	// management_number join
 	var mng string
 	if err := s.db.QueryRowContext(ctx, `SELECT management_number FROM assets_master WHERE asset_master_id=?`, m.AssetMasterID).Scan(&mng); err != nil {
-		if err == sql.ErrNoRows { mng = "" } else { return LendResponse{}, err }
+		if err == sql.ErrNoRows {
+			mng = ""
+		} else {
+			return LendResponse{}, err
+		}
 	}
 
 	return LendResponse{
@@ -182,7 +211,9 @@ type ListLendsResult struct {
 
 func (s *Service) ListLends(ctx context.Context, f LendFilter, p Page) (ListLendsResult, error) {
 	rows, total, err := s.store.ListLends(ctx, f, p)
-	if err != nil { return ListLendsResult{}, err }
+	if err != nil {
+		return ListLendsResult{}, err
+	}
 
 	items := make([]LendResponse, 0, len(rows))
 	for _, r := range rows {
@@ -202,11 +233,14 @@ func (s *Service) ListLends(ctx context.Context, f LendFilter, p Page) (ListLend
 			ReturnedQuantity:    r.ReturnedSum,
 			OutstandingQuantity: outstanding,
 			Note:                nullToPtr(r.Lend.Note),
+			Returned:            r.Lend.Returned,
 		})
 	}
 
 	next := p.Offset + p.Limit
-	if next >= int(total) { next = 0 } // 0=終端
+	if next >= int(total) {
+		next = 0
+	} // 0=終端
 	return ListLendsResult{Items: items, Total: total, NextOffset: next}, nil
 }
 
@@ -219,10 +253,14 @@ type ListReturnsResult struct {
 func (s *Service) ListReturnsByLend(ctx context.Context, lendULID string, p Page) (ListReturnsResult, error) {
 	// resolve lend_id
 	l, err := s.store.GetLendByULID(ctx, lendULID)
-	if err != nil { return ListReturnsResult{}, err }
+	if err != nil {
+		return ListReturnsResult{}, err
+	}
 
 	items, total, err := s.store.ListReturnsByLend(ctx, l.LendID, p)
-	if err != nil { return ListReturnsResult{}, err }
+	if err != nil {
+		return ListReturnsResult{}, err
+	}
 
 	res := make([]ReturnResponse, 0, len(items))
 	for _, it := range items {
@@ -236,7 +274,9 @@ func (s *Service) ListReturnsByLend(ctx context.Context, lendULID string, p Page
 		})
 	}
 	next := p.Offset + p.Limit
-	if next >= int(total) { next = 0 }
+	if next >= int(total) {
+		next = 0
+	}
 	return ListReturnsResult{Items: res, Total: total, NextOffset: next}, nil
 }
 
@@ -253,9 +293,13 @@ func (s *Service) CreateReturn(ctx context.Context, lendULID string, in CreateRe
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
 		// Get Lend & returned sum
 		l, err := s.store.GetLendByULID(ctx, lendULID)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		sum, err := s.store.SumReturned(ctx, l.LendID)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		outstanding := uint(0)
 		if l.Quantity > sum {
 			outstanding = l.Quantity - sum
@@ -266,7 +310,9 @@ func (s *Service) CreateReturn(ctx context.Context, lendULID string, in CreateRe
 
 		// lock asset row and add stock
 		assetID, _, err := s.store.LockAssetRow(ctx, tx, l.AssetMasterID)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		if err := s.store.UpdateAssetQuantity(ctx, tx, assetID, int(in.Quantity)); err != nil {
 			return err
 		}
@@ -291,6 +337,22 @@ func (s *Service) CreateReturn(ctx context.Context, lendULID string, in CreateRe
 			ReturnedAt:    now,
 			Note:          in.Note,
 		}
+
+		// updateAssets status
+		// 複数在庫がある場合、１つの管理番号に対して複数の状態が存在することになるのでここでUPDATEかけると
+		// sql: no rows in result setが返ってくるので，更新操作するけどエラーは無視する
+		statusID := 1 // 利用可能
+		if err := s.store.UpdateAssetsStatus(ctx, tx, l.AssetMasterID, statusID); err != nil {
+			log.Printf("failed to update assets.status: %v", err)
+			//return err
+		}
+
+		// update lend returned status
+		if err := s.store.UpdateLendReturnedStatus(ctx, tx, l.LendULID); err != nil {
+			log.Printf("failed to update lends.returned_status: %v", err)
+			//return err
+		}
+
 		return nil
 	})
 	return resp, err

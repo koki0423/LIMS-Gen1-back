@@ -19,15 +19,11 @@ func RegisterRoutes(r gin.IRoutes, svc *Service) {
 	// 貸出リソース
 	r.GET("/lends", h.ListLends)          //OK
 	r.GET("/lends/:lend_ulid", h.GetLend) //OK
+	//r.GET("/lends/:management_number", h.ListLendsByManagementNumber) //
 
 	// 返却
-	r.POST("/lends/:lend_ulid/returns", h.CreateReturn) //OK
-	r.GET("/lends/:lend_ulid/returns", h.ListReturnsByLend)//要修正
-	/*
-	修正点
-	・ハンドラの関数がListなのにULID指定してる
-	・ULID指定とListでまとめて取得するもの両方作る
-	*/
+	r.POST("/lends/:lend_ulid/returns", h.CreateReturn)     //OK
+	r.GET("/lends/:lend_ulid/returns", h.ListReturnsByLend) //要修正
 }
 
 // ---------- handlers ----------
@@ -62,6 +58,11 @@ func (h *Handler) ListLends(c *gin.Context) {
 	f := LendFilter{}
 	if v := c.Query("management_number"); v != "" {
 		f.ManagementNumber = &v
+	}
+	if v := c.Query("returned"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			f.Returned = &b
+		}
 	}
 	if v := c.Query("borrower_id"); v != "" {
 		f.BorrowerID = &v
