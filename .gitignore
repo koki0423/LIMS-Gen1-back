@@ -27,3 +27,11 @@ config.yaml
 
 .csv
 .txt
+
+/config/tls/
+/*.pem
+/*.key
+
+/public/
+
+.exe
