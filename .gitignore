@@ -26,7 +26,6 @@ config.yaml
 *.so
 
 # ---- TLS ディレクトリは残しつつ中身を無視 ----
-# ディレクトリ自体は追跡したい → .gitkeep を例外指定
 config/tls/*
 !config/tls/.gitkeep
 
