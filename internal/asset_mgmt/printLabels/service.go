@@ -3,55 +3,14 @@ package printLabels
 import (
 	"context"
 	"errors"
-	"fmt"
 )
-
-// ===== Error model =====
-type Code string
-
-const (
-	CodeInvalidArgument Code = "INVALID_ARGUMENT"
-	CodeNotFound        Code = "NOT_FOUND"
-	CodeConflict        Code = "CONFLICT"
-	CodeInternal        Code = "INTERNAL"
-)
-
-type APIError struct {
-	Code    Code
-	Message string
-}
-
-func (e *APIError) Error() string      { return fmt.Sprintf("%s: %s", e.Code, e.Message) }
-func ErrInvalid(msg string) *APIError  { return &APIError{Code: CodeInvalidArgument, Message: msg} }
-func ErrNotFound(msg string) *APIError { return &APIError{Code: CodeNotFound, Message: msg} }
-func ErrConflict(msg string) *APIError { return &APIError{Code: CodeConflict, Message: msg} }
-func ErrInternal(msg string) *APIError { return &APIError{Code: CodeInternal, Message: msg} }
-
-func toHTTPStatus(err error) int {
-	var api *APIError
-	if errors.As(err, &api) {
-		switch api.Code {
-		case CodeInvalidArgument:
-			return 400
-		case CodeNotFound:
-			return 404
-		case CodeConflict:
-			return 409
-		default:
-			return 500
-		}
-	}
-	return 500
-}
 
 type Service struct {
 }
 
 func NewService() *Service { return &Service{} }
 
-// in: service.go
-
-func (s *Service) PrintLabels(ctx context.Context, input PrintRequest) (PrintResponse, error) {
+func (s *Service) PrintLabels(ctx context.Context, input PrintRequest) (*PrintResponse, error) {
 	rows := []PrintRow{{Checked: input.Label.Checked,
 		ColB: input.Label.ColB,
 		ColC: input.Label.ColC,
@@ -69,11 +28,29 @@ func (s *Service) PrintLabels(ctx context.Context, input PrintRequest) (PrintRes
 	}
 
 	if err := PrintLabels(rows, params); err != nil {
-		if err == ErrTemplateNotFound {
-			return PrintResponse{}, ErrNotFound(err.Error())
+		// store.goから返る各エラーをここでハンドリングする
+		if errors.Is(err, ErrTapeSizeNotMatched) {
+			// テープ幅の不一致は「クライアントからの要求とサーバーの状態の競合」として409 Conflictを返す
+			return nil, ErrConflict(err.Error())
 		}
-		return PrintResponse{}, ErrInternal(err.Error())
+		if errors.Is(err, ErrTemplateNotFound) {
+			// テンプレートが見つからないのは404 Not Found
+			return nil, ErrNotFound(err.Error())
+		}
+		if errors.Is(err, ErrNoPrintableSelected) {
+			// 印刷対象が選択されていないのは「クライアントのリクエストが不正」として400 Bad Request
+			return nil, ErrInvalid(err.Error())
+		}
+		if errors.Is(err, ErrSPC10NotFound) {
+			// SPC10.exeが見つからないのはサーバー内部の問題として500 Internal
+			// ただし、メッセージは具体的で分かりやすいものにする
+			return nil, ErrInternal(err.Error())
+		}
+
+		// その他の予期せぬエラーも500 Internal
+		return nil, ErrInternal(err.Error())
 	}
 
-	return PrintResponse{Success: true, Error: nil}, nil
+	// 成功時は空のレスポンスとnil errorを返す
+	return &PrintResponse{}, nil
 }

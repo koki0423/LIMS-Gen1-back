@@ -325,6 +325,10 @@ func PrintLabels(data []PrintRow, p PrintParams) error {
 	}
 
 	log.Printf("Detected tape width: %smm\n", ti.Width)
+	if ti.Width != fmt.Sprintf("%d", p.TemplateWidthMM) {
+		return fmt.Errorf("%w: 要求幅=%d, 実幅=%s",
+			ErrTapeSizeNotMatched, p.TemplateWidthMM, ti.Width)
+	}
 
 	// 4) テンプレートの存在確認
 	templateFilename := fmt.Sprintf("%d_%s.lw1", p.TemplateWidthMM, p.BarcodeType)
@@ -336,6 +340,13 @@ func PrintLabels(data []PrintRow, p PrintParams) error {
 	// 	return fmt.Errorf("%w: 要求幅=%d, 実幅=%s",
 	// 		ErrTapeSizeNotMatched, p.TemplateWidthMM, ti.Width)
 	// }
+
+	// 4) テンプレートの存在確認とテープ幅の検証
+	// 要求された幅と、実際にプリンターにセットされているテープ幅が一致するかを検証
+	if ti.Width != fmt.Sprintf("%d", p.TemplateWidthMM) {
+		return fmt.Errorf("%w: 要求幅=%d, 実幅=%s",
+			ErrTapeSizeNotMatched, p.TemplateWidthMM, ti.Width)
+	}
 
 	if !fileExists(templatePath) {
 		return fmt.Errorf("%w: 幅:%dmm, タイプ:%s → %s を確認してください",
