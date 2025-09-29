@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"runtime"
+	// "runtime"
 	// "io/fs"
 	"os"
 	"os/exec"
@@ -35,7 +35,7 @@ const (
 	ErrorMessageGetTapeWidth = "テープ幅が取得できません。"
 	ErrorMessageTplNotFound  = "テープ幅に合ったレイアウトが存在しません。"
 	ErrorMessageRunPrint     = "\"SPC10.exe\"が指定した場所に存在しません。インストール先を確認してください。"
-	DefaultTemplateDummyRel  = "../bihin_12.lw1" // /GT 時に使うダミー
+	DefaultTemplateDummyRel  = "dummy.lw1" // /GT 時に使うダミー
 	DefaultSPC10PathX86      = `C:\Program Files (x86)\KING JIM\TEPRA Label Editor SPC10\SPC10.exe`
 	DefaultSPC10PathX64      = `C:\Program Files\KING JIM\TEPRA Label Editor SPC10\SPC10.exe`
 	TapeWidthFilename        = "TapeWidth.txt"
@@ -173,6 +173,7 @@ func createPrintOption(
 	if printLog != "" {
 		parts = append(parts, "/L "+printLog)
 	}
+	log.Printf("SPC10 options: %s\n", strings.Join(parts, " "))
 	return strings.Join(parts, ",")
 }
 
@@ -247,25 +248,26 @@ func fileExists(path string) bool {
 
 // PrintLabels エントリポイント
 func PrintLabels(data []PrintRow, p PrintParams) error {
-	// // 0) 絶対パス類の基準
-	// baseDir, err := os.Getwd()
-	// if err != nil {
-	// 	return err
-	// }
-
-	// 0) 基準ディレクトリをこのファイルと同じ場所（/internal/print）に固定
-	var baseDir string
-	if out := os.Getenv("PRINT_OUTPUT_DIR"); out != "" {
-		// 環境変数があればそちらを優先
-		baseDir = out
-	} else {
-		// このソースファイルのディレクトリを取得（ビルド後も有効）
-		_, thisFile, _, ok := runtime.Caller(0)
-		if !ok {
-			return errors.New("failed to resolve runtime caller path")
-		}
-		baseDir = filepath.Dir(thisFile)
+	// 0) 実行ファイル（.exe）の場所を基準に各ディレクトリを決定する
+	exePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("failed to get executable path: %w", err)
 	}
+	exeDir := filepath.Dir(exePath)
+	// テンプレート用ディレクトリ（存在するかをチェックする）
+	assetDir := filepath.Join(exeDir, "printTemplate")
+	if _, err := os.Stat(assetDir); os.IsNotExist(err) {
+		// ディレクトリが存在しない場合は、明確なエラーメッセージを出して終了する
+		return fmt.Errorf("テンプレートディレクトリが見つかりません。実行ファイルと同じ階層に 'printTemplate' フォルダを作成し、.lw1 ファイルを配置してください。 path: %s", assetDir)
+	}
+
+	// ログ出力用ディレクトリ（存在しない場合に自動作成する）
+	outputDir := filepath.Join(exeDir, "printlog")
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	log.Printf("[INFO] Using output directory: %s", outputDir)
 
 	// 1) SPC10.exe の場所
 	spc10, err := spc10Path()
@@ -273,21 +275,24 @@ func PrintLabels(data []PrintRow, p PrintParams) error {
 		return fmt.Errorf("%w: %s", err, ErrorMessageRunPrint)
 	}
 
+	log.Printf("Using SPC10.exe at: %s\n", spc10)
+
 	// 2) 印刷対象があるか
 	if getPrintJobCount(data) == 0 {
 		return fmt.Errorf("%w: %s", ErrNoPrintableSelected, ErrorMessageNoPrintJob)
 	}
 
 	// 3) /GT でテープ幅を取得
-	tapeWidthFile := filepath.Join(baseDir, TapeWidthFilename)
-	printCSV := filepath.Join(baseDir, PrintCSVFilename)
+	//    一時ファイルはすべて outputDir を基準にする
+	tapeWidthFile := filepath.Join(outputDir, TapeWidthFilename)
+	printCSV := filepath.Join(outputDir, PrintCSVFilename)
 	printLog := ""
 	if p.EnablePrintLog {
-		printLog = filepath.Join(baseDir, PrintLogFilename)
+		printLog = filepath.Join(outputDir, PrintLogFilename)
 	}
 
-	// /GT 用ダミーテンプレ（実際に存在する .lw1 を指定）
-	dummyTpl := filepath.Join(baseDir, DefaultTemplateDummyRel)
+	// /GT 用ダミーテンプレはアセットなので assetDir 基準のまま
+	dummyTpl := filepath.Join(assetDir, DefaultTemplateDummyRel)
 
 	// CSV は空でも良いが、SPC10 が参照できるように用意
 	if err := writeCSVcp932(printCSV, data); err != nil {
@@ -332,7 +337,7 @@ func PrintLabels(data []PrintRow, p PrintParams) error {
 
 	// 4) テンプレートの存在確認
 	templateFilename := fmt.Sprintf("%d_%s.lw1", p.TemplateWidthMM, p.BarcodeType)
-	templatePath := filepath.Join(baseDir, templateFilename)
+	templatePath := filepath.Join(assetDir, templateFilename)
 
 	// テプラのバグかわからないけど，稀にセットしたテープをAPI経由だと認識しないのでコメントアウト
 	// ただ，テープのセットし直しとかごにょごにょすると認識する．どちらにせよ，指定幅と異なっても印刷できればいいのでしばらくはコメントアウト
