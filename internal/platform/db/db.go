@@ -24,9 +24,15 @@ type DatabaseConfig struct {
 	DBName   string `yaml:"dbname"`
 }
 
+type Certs struct {
+	Cert string `yaml:"cert"`
+	Key  string `yaml:"key"`
+}
+
 type Config struct {
 	Version string         `yaml:"version"`
 	DB      DatabaseConfig `yaml:"database"`
+	Certificate Certs      `yaml:"certificate"`
 }
 
 func LoadConfig(path string) (*Config, error) {

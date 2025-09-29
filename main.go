@@ -12,6 +12,7 @@ import (
 	"path"
 	"strings"
 	"time"
+	"fmt"
 
 	// "github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -143,8 +144,8 @@ func main() {
 		Addr:    ":8443",
 		Handler: r,
 	}
-	certFile := "config/tls/server.pem"
-	keyFile := "config/tls/server-key.pem"
+	certFile := fmt.Sprintf("config/tls/%s", cfg.Certificate.Cert)
+	keyFile := fmt.Sprintf("config/tls/%s", cfg.Certificate.Key)
 
 	go func() {
 		log.Println("[INFO] listening on https://0.0.0.0:8443")
