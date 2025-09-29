@@ -27,7 +27,7 @@ import (
 )
 
 // フロントのビルド出力を埋め込む（backend/public 配下）
-//
+
 //go:embed public
 var embedded embed.FS
 
@@ -71,14 +71,12 @@ func main() {
 	attendance.RegisterRoutes(api, attendance.NewService(conn))
 	printLabels.RegisterRoutes(api, printLabels.NewService())
 
-	// ===== ここから静的配信（埋め込みSPA） =====
 	sub, err := fs.Sub(embedded, "public")
 	if err != nil {
 		log.Fatal(err)
 	}
 	fileFS := http.FS(sub)
 
-	// すべての非APIリクエストを静的 or SPA で処理
 	r.NoRoute(func(c *gin.Context) {
 		// API は対象外
 		if strings.HasPrefix(c.Request.URL.Path, "/api/") {
@@ -123,21 +121,6 @@ func main() {
 
 		c.Status(http.StatusNotFound)
 	})
-	// ===== ここまで =====
-
-	// srv := &http.Server{
-	// 	Addr:              ":8080",
-	// 	Handler:           r,
-	// 	ReadHeaderTimeout: 10 * time.Second,
-	// }
-
-	// // 起動
-	// go func() {
-	// 	log.Println("[INFO] listening on :8080")
-	// 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-	// 		log.Fatal(err)
-	// 	}
-	// }()
 
 	// TLS起動（:8443 例）
 	srv := &http.Server{
