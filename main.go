@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"fmt"
 	"io/fs"
 	"log"
 	"mime"
@@ -12,7 +13,6 @@ import (
 	"path"
 	"strings"
 	"time"
-	"fmt"
 
 	// "github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -27,6 +27,7 @@ import (
 )
 
 // フロントのビルド出力を埋め込む（backend/public 配下）
+// "//go:embed public" ← これはビルドに必要なので消さないこと
 
 //go:embed public
 var embedded embed.FS
@@ -37,7 +38,6 @@ func main() {
 		panic(err)
 	}
 
-	// NOTE: 変数名を分けてシャドーイング回避（お好みで）
 	conn, err := db.Connect(cfg.DB)
 	if err != nil {
 		panic(err)
@@ -49,7 +49,7 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
-	_ = r.SetTrustedProxies(nil) // 直配信なら nil でOK（逆プロキシ配下ならCIDRを設定）
+	_ = r.SetTrustedProxies(nil)
 
 	// CORS（開発中のみ必要。埋め込み配信に切り替えたら基本不要）
 	// r.Use(cors.New(cors.Config{
@@ -127,8 +127,13 @@ func main() {
 		Addr:    ":8443",
 		Handler: r,
 	}
-	certFile := fmt.Sprintf("config/tls/%s", cfg.Certificate.Cert)
-	keyFile := fmt.Sprintf("config/tls/%s", cfg.Certificate.Key)
+	// TLS設定
+	//開発用
+	// certFile := fmt.Sprintf("config/tls/dev/%s", cfg.Certificate.Cert)
+	// keyFile := fmt.Sprintf("config/tls/dev/%s", cfg.Certificate.Key)
+	//本番用
+	certFile := fmt.Sprintf("config/tls/deploy/%s", cfg.Certificate.Cert)
+	keyFile := fmt.Sprintf("config/tls/deploy/%s", cfg.Certificate.Key)
 
 	go func() {
 		log.Println("[INFO] listening on https://0.0.0.0:8443")
