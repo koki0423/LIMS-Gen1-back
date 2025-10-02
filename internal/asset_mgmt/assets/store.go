@@ -256,7 +256,7 @@ func (s *Store) CreateAssetTx(
         INSERT INTO assets
           (asset_master_id, serial, quantity, purchased_at, status_id, owner, default_location,
            location, last_checked_at, last_checked_by, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(), ?, ?)`
 
     res, err := tx.ExecContext(ctx, qIns,
         masterID,
@@ -267,7 +267,6 @@ func (s *Store) CreateAssetTx(
         in.Owner,
         in.DefaultLocation,
         in.Location,
-        in.LastCheckedAt,
         in.LastCheckedBy,
         in.Notes,
     )
