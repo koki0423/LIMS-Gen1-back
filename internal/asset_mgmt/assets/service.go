@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"log"
+	"strings"
 
 	mysql "github.com/go-sql-driver/mysql"
 	ulid "github.com/oklog/ulid/v2"
@@ -138,16 +138,15 @@ func (s *Service) UpdateAssetMaster(ctx context.Context, managementNumber string
 // ===== Assets =====
 
 func (s *Service) CreateAsset(ctx context.Context, in CreateAssetRequest) (AssetResponse, error) {
-	// XOR 解決
 	var masterID uint64
 	if in.AssetMasterID == nil {
-		log.Printf("either asset_master_id or management_number is required")
+		log.Printf("asset_master_id is required")
 		return AssetResponse{}, ErrInvalid("either asset_master_id or management_number is required")
 	} else if in.AssetMasterID != nil {
 		log.Printf("asset_master_id: %d", *in.AssetMasterID)
 		masterID = *in.AssetMasterID
 	}
-	
+
 	// quantity >= 0
 	if int(in.Quantity) < 0 {
 		log.Printf("quantity must be >= 0")
@@ -162,15 +161,16 @@ func (s *Service) CreateAsset(ctx context.Context, in CreateAssetRequest) (Asset
 		return AssetResponse{}, ErrInvalid("purchased_at required")
 	}
 
-	id, err := s.store.InsertAsset(ctx, in, masterID)
+	id, mgmt, err := s.store.CreateAssetTx(ctx, in, masterID)
 	if err != nil {
 		return AssetResponse{}, err
 	}
-	out, err := s.store.GetAssetByID(ctx, id)
-	if err != nil {
-		return AssetResponse{}, err
-	}
-	return *out, nil
+
+	return AssetResponse{
+		AssetID:          id,
+		ManagementNumber: mgmt,
+		// 必要ならその他の最小項目をここで埋める
+	}, nil
 }
 
 func (s *Service) GetAsset(ctx context.Context, id uint64) (AssetResponse, error) {
