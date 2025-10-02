@@ -87,7 +87,6 @@ func (s *Service) CreateDisposal(ctx context.Context, managementNumber string, i
 		// master解決
 		masterID, err := s.store.ResolveMasterID(ctx, managementNumber)
 		if err != nil { return err }
-		// log.Printf("Resolved masterID: %d", masterID)
 
 		// 在庫ロック & チェック
 		assetID, qty, err := s.store.LockAssetRow(ctx, tx, masterID) // SELECT ... FOR UPDATE

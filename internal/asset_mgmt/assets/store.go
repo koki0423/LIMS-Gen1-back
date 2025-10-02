@@ -279,14 +279,12 @@ func (s *Store) CreateAssetTx(
         return 0, "", err
     }
     assetID = uint64(id64)
-    log.Printf("Inserted asset: assetID=%d (masterID=%d)", assetID, masterID)
 
     const qMgmt = `SELECT management_number FROM assets_master WHERE asset_master_id = ?`
     if err = tx.QueryRowContext(ctx, qMgmt, masterID).Scan(&managementNumber); err != nil {
         log.Printf("Failed to resolve management_number for masterID=%d: %v", masterID, err)
         return 0, "", err
     }
-    log.Printf("Resolved management_number from master: masterID=%d mgmt=%s", masterID, managementNumber)
 
     if err = tx.Commit(); err != nil {
         return 0, "", err
