@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"log"
 
 	mysql "github.com/go-sql-driver/mysql"
 	ulid "github.com/oklog/ulid/v2"
@@ -140,19 +141,24 @@ func (s *Service) CreateAsset(ctx context.Context, in CreateAssetRequest) (Asset
 	// XOR 解決
 	var masterID uint64
 	if in.AssetMasterID == nil {
+		log.Printf("either asset_master_id or management_number is required")
 		return AssetResponse{}, ErrInvalid("either asset_master_id or management_number is required")
 	} else if in.AssetMasterID != nil {
+		log.Printf("asset_master_id: %d", *in.AssetMasterID)
 		masterID = *in.AssetMasterID
 	}
 	
 	// quantity >= 0
 	if int(in.Quantity) < 0 {
+		log.Printf("quantity must be >= 0")
 		return AssetResponse{}, ErrInvalid("quantity must be >= 0")
 	}
 	if strings.TrimSpace(in.Owner) == "" || strings.TrimSpace(in.DefaultLocation) == "" {
+		log.Printf("owner/default_location required")
 		return AssetResponse{}, ErrInvalid("owner/default_location required")
 	}
 	if in.PurchasedAt.IsZero() {
+		log.Printf("purchased_at required")
 		return AssetResponse{}, ErrInvalid("purchased_at required")
 	}
 

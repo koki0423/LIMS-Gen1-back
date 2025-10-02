@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 )
@@ -244,9 +245,11 @@ func (s *Store) InsertAsset(ctx context.Context, in CreateAssetRequest, masterID
 		in.Location, in.LastCheckedAt, in.LastCheckedBy, in.Notes,
 	)
 	if err != nil {
+		log.Printf("InsertAsset: exec error: %v", err)
 		return 0, err
 	}
 	id, _ := res.LastInsertId()
+	log.Printf("InsertAsset: new asset id: %d", id)
 	return uint64(id), nil
 }
 
