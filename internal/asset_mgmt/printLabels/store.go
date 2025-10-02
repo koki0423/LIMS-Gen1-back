@@ -173,7 +173,6 @@ func createPrintOption(
 	if printLog != "" {
 		parts = append(parts, "/L "+printLog)
 	}
-	log.Printf("SPC10 options: %s\n", strings.Join(parts, " "))
 	return strings.Join(parts, ",")
 }
 
@@ -267,15 +266,11 @@ func PrintLabels(data []PrintRow, p PrintParams) error {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	log.Printf("[INFO] Using output directory: %s", outputDir)
-
 	// 1) SPC10.exe の場所
 	spc10, err := spc10Path()
 	if err != nil {
 		return fmt.Errorf("%w: %s", err, ErrorMessageRunPrint)
 	}
-
-	log.Printf("Using SPC10.exe at: %s\n", spc10)
 
 	// 2) 印刷対象があるか
 	if getPrintJobCount(data) == 0 {
